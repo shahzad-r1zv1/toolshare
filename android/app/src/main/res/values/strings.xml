@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ToolShare</string>
+    <string name="title_activity_main">ToolShare</string>
+    <string name="package_name">com.yourname.toolshare</string>
+    <string name="custom_url_scheme">com.yourname.toolshare</string>
+</resources>
