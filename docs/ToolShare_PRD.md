@@ -1,6 +1,6 @@
 # ToolShare — Product Requirements Document (PRD)
 **Date:** 09.18.2025  
-**Owner:** Shahzad R.
+**Owner:** SR
 
 ---
 
