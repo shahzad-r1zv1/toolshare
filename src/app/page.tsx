@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+import Image from "next/image";
 import React, { useEffect, useMemo, useState } from "react";
 
 // ----------------------------------
@@ -97,7 +97,7 @@ function Avatar({ name }: { name: string }) {
 }
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" role="dialog" aria-modal>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" role="dialog" aria-modal="true">
       <div className="bg-gray-950 border border-gray-800 rounded-2xl p-4 max-w-lg w-full">
         <div className="flex items-center justify-between mb-2">
           <h4 className="font-semibold">{title}</h4>
@@ -149,7 +149,7 @@ function MyCircle({ state, activeCircleId, search, filter, onOpenDetails }: { st
                 <Card key={item.id}>
                   <div className="flex gap-3 items-center">
                     {item.photos[0] ? (
-                      <img src={item.photos[0]} alt={item.title} className="w-16 h-16 object-cover rounded-md border border-gray-700" />
+                      <Image src={item.photos[0]} alt={item.title} width={64} height={64} className="w-16 h-16 object-cover rounded-md border border-gray-700" />
                     ) : (
                       <div className="w-16 h-16 flex items-center justify-center bg-gray-800 text-xs text-gray-400 rounded-md">No Photo</div>
                     )}
@@ -218,7 +218,7 @@ function MyItems({ state, setState, activeCircleId }: { state: State; setState: 
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               {item.photos[0] ? (
-                <img src={item.photos[0]} alt={item.title} className="w-12 h-12 object-cover rounded-md border border-gray-700" />
+                <Image src={item.photos[0]} alt={item.title} width={48} height={48} className="w-12 h-12 object-cover rounded-md border border-gray-700" />
               ) : (
                 <div className="w-12 h-12 flex items-center justify-center bg-gray-800 text-[10px] text-gray-400 rounded-md">No Photo</div>
               )}
@@ -305,7 +305,7 @@ function Requests({ state, setState, search, filter }: { state: State; setState:
           return (
             <Card key={r.id}>
               <div className="flex items-center gap-3">
-                {item?.photos[0] ? (<img src={item.photos[0]} alt={item.title} className="w-12 h-12 object-cover rounded-md border border-gray-700" />) : (<div className="w-12 h-12 flex items-center justify-center bg-gray-800 text-[10px] text-gray-400 rounded-md">No Photo</div>)}
+                {item?.photos[0] ? (<Image src={item.photos[0]} alt={item.title} width={48} height={48} className="w-12 h-12 object-cover rounded-md border border-gray-700" />) : (<div className="w-12 h-12 flex items-center justify-center bg-gray-800 text-[10px] text-gray-400 rounded-md">No Photo</div>)}
                 <div className="flex-1">
                   <div><b>{borrower?.name}</b> wants <b>{item?.title}</b></div>
                   <div className="text-xs text-gray-400">{DATE_FMT(r.startDate)} → {DATE_FMT(r.endDate)}</div>
@@ -328,7 +328,7 @@ function Requests({ state, setState, search, filter }: { state: State; setState:
           return (
             <Card key={r.id}>
               <div className="flex items-center gap-3">
-                {item?.photos[0] ? (<img src={item.photos[0]} alt={item.title} className="w-12 h-12 object-cover rounded-md border border-gray-700" />) : (<div className="w-12 h-12 flex items-center justify-center bg-gray-800 text-[10px] text-gray-400 rounded-md">No Photo</div>)}
+                {item?.photos[0] ? (<Image src={item.photos[0]} alt={item.title} width={48} height={48} className="w-12 h-12 object-cover rounded-md border border-gray-700" />) : (<div className="w-12 h-12 flex items-center justify-center bg-gray-800 text-[10px] text-gray-400 rounded-md">No Photo</div>)}
                 <div className="flex-1">
                   <div>Waiting on <b>{owner?.name}</b> to approve <b>{item?.title}</b></div>
                   <div className="text-xs text-gray-400">{DATE_FMT(r.startDate)} → {DATE_FMT(r.endDate)}</div>
@@ -349,7 +349,7 @@ function Requests({ state, setState, search, filter }: { state: State; setState:
           return (
             <Card key={l.id}>
               <div className="flex items-center gap-3">
-                {item?.photos[0] ? (<img src={item.photos[0]} alt={item.title} className="w-12 h-12 object-cover rounded-md border border-gray-700" />) : (<div className="w-12 h-12 flex items-center justify-center bg-gray-800 text-[10px] text-gray-400 rounded-md">No Photo</div>)}
+                {item?.photos[0] ? (<Image src={item.photos[0]} alt={item.title} width={48} height={48} className="w-12 h-12 object-cover rounded-md border border-gray-700" />) : (<div className="w-12 h-12 flex items-center justify-center bg-gray-800 text-[10px] text-gray-400 rounded-md">No Photo</div>)}
                 <div className="flex-1">
                   <div><b>{item?.title}</b> borrowed by <b>{borrower?.name}</b></div>
                   <div className={`text-xs ${overdue ? "text-red-400" : "text-gray-400"}`}>Due {DATE_FMT(l.endDate)}{overdue ? " • Overdue" : ""}</div>
@@ -395,7 +395,7 @@ function LoanHistory({ state, search, filter }: { state: State; search: string; 
           <Card key={l.id}>
             <div className="flex items-center gap-3">
               {item?.photos[0] ? (
-                <img src={item.photos[0]} alt={item.title} className="w-12 h-12 object-cover rounded-md border border-gray-700" />
+                <Image src={item.photos[0]} alt={item.title} width={48} height={48} className="w-12 h-12 object-cover rounded-md border border-gray-700" />
               ) : (
                 <div className="w-12 h-12 flex items-center justify-center bg-gray-800 text-[10px] text-gray-400 rounded-md">No Photo</div>
               )}
@@ -419,7 +419,7 @@ function DetailsModal({ item, onClose, onRequest }: { item: Item; onClose: () =>
   const [start, setStart] = useState(""); const [end, setEnd] = useState("");
   return (
     <Modal title={item.title} onClose={onClose}>
-      {item.photos[0] && <img src={item.photos[0]} alt={item.title} className="rounded-xl max-h-48 object-cover mb-2" />}
+      {item.photos[0] && <Image src={item.photos[0]} alt={item.title} width={512} height={192} className="rounded-xl max-h-48 w-full object-cover mb-2" />}
       {item.category && <p className="text-sm text-gray-300">Category: {item.category}</p>}
       {item.note && <p className="text-sm text-gray-300">Note: {item.note}</p>}
       {item.rv && <p className="text-sm text-gray-300">Replacement Value: ${item.rv}</p>}
@@ -454,6 +454,7 @@ export default function Page() {
   const handleRequest = (start: string, end: string) => {
     if (!detailsFor) return;
     if (!start || !end) { alert("Pick dates"); return; }
+    if (new Date(start) > new Date(end)) { alert("Start date must be on or before end date."); return; }
     if (state.user.id === detailsFor.ownerId) { alert("You cannot request your own item."); return; }
     const req: Request = { id: uid(), itemId: detailsFor.id, borrowerId: state.user.id, startDate: start, endDate: end, status: "PENDING", createdAt: now() };
     setState(s => ({ ...s, requests: [req, ...s.requests] }));
@@ -478,10 +479,10 @@ export default function Page() {
 
       <main className="p-4 max-w-5xl mx-auto">
         <div className="flex gap-2 mb-4">
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tools..." className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm flex-1" />
-          <select value={filter} onChange={e => setFilter(e.target.value)} className="px-2 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm">
+          <input aria-label="Search tools" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tools..." className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm flex-1" />
+          <select aria-label="Filter by category" value={filter} onChange={e => setFilter(e.target.value)} className="px-2 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm">
             <option value="">All</option>
-            {categories.map(c => <option key={c}>{c}</option>)}
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
 
