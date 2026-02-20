@@ -1,6 +1,8 @@
 "use client";
 import Image from "next/image";
 import React, { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
+import { useRouter } from "next/navigation";
 
 // ----------------------------------
 // Helpers & Persistence
@@ -437,8 +439,16 @@ function DetailsModal({ item, onClose, onRequest }: { item: Item; onClose: () =>
 // Main Page
 // ----------------------------------
 export default function Page() {
+  const { user, loading, signOut } = useAuth();
+  const router = useRouter();
   const [state, setState] = useState<State>(() => load() || seed());
   useEffect(() => save(state), [state]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/login");
+    }
+  }, [user, loading, router]);
 
   const [tab, setTab] = useState<"circle" | "items" | "reqs" | "history">("circle");
   const [activeCircleId, setActiveCircleId] = useState(state.user.circles[0] || state.circles[0]?.id || "");
@@ -461,6 +471,14 @@ export default function Page() {
     setDetailsFor(null);
   };
 
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen bg-black text-gray-100 flex items-center justify-center">
+        <p className="text-gray-400">Loading…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black text-gray-100">
       <header className="p-4 border-b border-gray-800 bg-gray-900 sticky top-0 z-10">
@@ -474,6 +492,15 @@ export default function Page() {
           {activeCircle && (
             <div className="text-xs text-gray-400">Invite Code: <span className="font-mono">{activeCircle.inviteCode}</span></div>
           )}
+          <div className="flex items-center gap-3">
+            {user.photoURL && (
+              <Image src={user.photoURL} alt={user.displayName || "User"} width={32} height={32} className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
+            )}
+            <span className="text-sm text-gray-300">{user.displayName || user.email}</span>
+            <button onClick={signOut} className="px-3 py-1 text-sm bg-gray-800 hover:bg-gray-700 text-gray-100 rounded-2xl transition-colors">
+              Sign Out
+            </button>
+          </div>
         </div>
       </header>
 
