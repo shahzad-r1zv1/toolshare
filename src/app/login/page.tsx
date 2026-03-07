@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { LoadingScreen, Spinner } from "@/components/ui";
 
 export default function LoginPage() {
-  const { user, loading, signInWithGoogle } = useAuth();
+  const { user, loading, error, signInWithGoogle } = useAuth();
   const router = useRouter();
   const [signingIn, setSigningIn] = useState(false);
 
@@ -38,6 +38,13 @@ export default function LoginPage() {
             Sign in to share tools with your trusted circles.
           </p>
         </div>
+
+        {error && (
+          <div className="bg-red-900/30 border border-red-800 rounded-xl px-4 py-3 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
         <button
           onClick={handleSignIn}
           disabled={signingIn}

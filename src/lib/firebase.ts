@@ -13,11 +13,17 @@ const firebaseConfig = {
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let googleProvider: GoogleAuthProvider | undefined;
+let initError: string | undefined;
 
 if (typeof window !== "undefined") {
-  app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  googleProvider = new GoogleAuthProvider();
+  try {
+    app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    googleProvider = new GoogleAuthProvider();
+  } catch (error) {
+    console.error("Firebase initialization failed:", error);
+    initError = "Firebase is not configured. Please set up your environment variables.";
+  }
 }
 
-export { app, auth, googleProvider };
+export { app, auth, googleProvider, initError };
