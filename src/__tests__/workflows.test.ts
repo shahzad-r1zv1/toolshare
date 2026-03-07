@@ -7,6 +7,11 @@ import type { State, Item, Request, Loan } from "@/lib/types";
  * by testing the same state transitions that the React components perform.
  */
 
+const TEST_START = "2026-03-10";
+const TEST_END = "2026-03-15";
+const TEST_START_2 = "2026-04-01";
+const TEST_END_2 = "2026-04-10";
+
 function addItem(state: State, item: Omit<Item, "id" | "createdAt">): State {
   const newItem: Item = { ...item, id: uid(), createdAt: now() };
   return { ...state, items: [newItem, ...state.items] };
@@ -154,7 +159,7 @@ describe("Core Workflows", () => {
 
     it("also removes associated requests", () => {
       const itemId = state.items[0].id;
-      state = requestItem(state, itemId, "alice", "2026-03-10", "2026-03-15");
+      state = requestItem(state, itemId, "alice", TEST_START, TEST_END);
       expect(state.requests.length).toBe(1);
       state = deleteItem(state, itemId);
       expect(state.requests.length).toBe(0);
@@ -164,7 +169,7 @@ describe("Core Workflows", () => {
   describe("Request Tool", () => {
     it("creates a PENDING request", () => {
       const aliceItem = state.items.find((i) => i.ownerId === "alice")!;
-      state = requestItem(state, aliceItem.id, "you", "2026-03-10", "2026-03-15");
+      state = requestItem(state, aliceItem.id, "you", TEST_START, TEST_END);
       expect(state.requests.length).toBe(1);
       expect(state.requests[0].status).toBe("PENDING");
       expect(state.requests[0].borrowerId).toBe("you");
@@ -173,16 +178,16 @@ describe("Core Workflows", () => {
 
     it("preserves dates in the request", () => {
       const aliceItem = state.items.find((i) => i.ownerId === "alice")!;
-      state = requestItem(state, aliceItem.id, "you", "2026-03-10", "2026-03-15");
-      expect(state.requests[0].startDate).toBe("2026-03-10");
-      expect(state.requests[0].endDate).toBe("2026-03-15");
+      state = requestItem(state, aliceItem.id, "you", TEST_START, TEST_END);
+      expect(state.requests[0].startDate).toBe(TEST_START);
+      expect(state.requests[0].endDate).toBe(TEST_END);
     });
   });
 
   describe("Approve Request", () => {
     it("changes request status to APPROVED and creates an ACTIVE loan", () => {
       const aliceItem = state.items.find((i) => i.ownerId === "alice")!;
-      state = requestItem(state, aliceItem.id, "you", "2026-03-10", "2026-03-15");
+      state = requestItem(state, aliceItem.id, "you", TEST_START, TEST_END);
       const reqId = state.requests[0].id;
       state = approveRequest(state, reqId);
 
@@ -198,7 +203,7 @@ describe("Core Workflows", () => {
   describe("Decline Request", () => {
     it("changes request status to DECLINED without creating a loan", () => {
       const aliceItem = state.items.find((i) => i.ownerId === "alice")!;
-      state = requestItem(state, aliceItem.id, "you", "2026-03-10", "2026-03-15");
+      state = requestItem(state, aliceItem.id, "you", TEST_START, TEST_END);
       const reqId = state.requests[0].id;
       state = declineRequest(state, reqId);
 
@@ -212,7 +217,7 @@ describe("Core Workflows", () => {
     it("changes loan status to RETURNED with notes", () => {
       // Setup: request → approve → active loan
       const myItem = state.items.find((i) => i.ownerId === "you")!;
-      state = requestItem(state, myItem.id, "alice", "2026-03-10", "2026-03-15");
+      state = requestItem(state, myItem.id, "alice", TEST_START, TEST_END);
       const reqId = state.requests[0].id;
       state = approveRequest(state, reqId);
       const loanId = state.loans[0].id;
@@ -230,7 +235,7 @@ describe("Core Workflows", () => {
       const myItem = state.items.find((i) => i.ownerId === "you")!;
 
       // 2. Alice requests it
-      state = requestItem(state, myItem.id, "alice", "2026-04-01", "2026-04-10");
+      state = requestItem(state, myItem.id, "alice", TEST_START_2, TEST_END_2);
       expect(state.requests.length).toBe(1);
       expect(state.requests[0].status).toBe("PENDING");
 
@@ -254,7 +259,7 @@ describe("Core Workflows", () => {
 
     it("handles request → decline flow", () => {
       const myItem = state.items.find((i) => i.ownerId === "you")!;
-      state = requestItem(state, myItem.id, "bob", "2026-04-01", "2026-04-10");
+      state = requestItem(state, myItem.id, "bob", TEST_START_2, TEST_END_2);
       state = declineRequest(state, state.requests[0].id);
       expect(state.requests[0].status).toBe("DECLINED");
       expect(state.loans.length).toBe(0);
@@ -271,7 +276,7 @@ describe("Core Workflows", () => {
       const ladderId = state.items[0].id;
 
       // Someone requests it
-      state = requestItem(state, ladderId, "alice", "2026-04-01", "2026-04-05");
+      state = requestItem(state, ladderId, "alice", TEST_START_2, TEST_END);
       expect(state.requests.length).toBe(1);
 
       // Delete the item → should also delete the request
