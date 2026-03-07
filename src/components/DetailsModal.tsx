@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Button, Modal, Toast, FormField } from "./ui";
 import type { Item } from "@/lib/types";
 
@@ -23,7 +23,7 @@ export function DetailsModal({
     type: "error";
   } | null>(null);
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};

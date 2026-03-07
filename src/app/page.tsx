@@ -54,7 +54,7 @@ const TAB_CONFIG: { key: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function Page() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, error: authError, signOut } = useAuth();
   const router = useRouter();
   const [state, setState] = useState<State>(() => load() || seed());
   useEffect(() => save(state), [state]);
@@ -176,6 +176,12 @@ export default function Page() {
           </div>
         </div>
       </header>
+
+      {authError && (
+        <div className="bg-red-900/30 border-b border-red-800 px-4 py-3 text-center">
+          <p className="text-sm text-red-300">{authError}</p>
+        </div>
+      )}
 
       <main className="p-4 max-w-5xl mx-auto">
         {/* Search & Filter */}

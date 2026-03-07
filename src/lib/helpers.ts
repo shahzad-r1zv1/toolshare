@@ -1,6 +1,9 @@
 import type { State, User, Friend, Circle, Item } from "./types";
 
-export const uid = () => Math.random().toString(36).slice(2);
+export const uid = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
 export const now = () => Date.now();
 export const DATE_FMT = (s: string) => new Date(s).toLocaleDateString();
 
