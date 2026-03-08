@@ -6,6 +6,22 @@ Built with **Next.js** (static export) + **Capacitor** for Android.
 
 ---
 
+## 🚀 Getting Started for Beta Testing
+
+**New to ToolShare?** Start here:
+
+### 📖 [Quick Start Guide](./docs/QUICK_START.md) ← 30 minutes to live app!
+
+**Or follow these detailed guides:**
+
+1. **[Firebase Setup Guide](./docs/FIREBASE_SETUP.md)** - Enable Google Sign-On authentication (FREE)
+2. **[Deployment Guide](./docs/DEPLOYMENT.md)** - Host your app for free ($0/month options)
+3. **[Beta Testing Guide](./docs/BETA_TESTING.md)** - Distribute to friends and collect feedback
+
+**TL;DR**: Google Sign-On is already implemented! Just set up Firebase (free), deploy to Firebase Hosting (free), and share the URL with your friends.
+
+---
+
 ## Prerequisites
 
 - **Node.js** 20+
@@ -173,3 +189,71 @@ toolshare/
 | `npm run lint` | Run ESLint |
 | `npm test` | Run Vitest tests |
 | `npx cap sync android` | Sync web assets to Android |
+
+---
+
+## 🔐 Authentication & Deployment
+
+### Google Sign-On Status
+
+✅ **Already Implemented!** The login page and Firebase Authentication are fully set up.
+
+**To enable for production:**
+1. Create a Firebase project (free)
+2. Enable Google Authentication in Firebase Console
+3. Add Firebase config to `.env.local`
+4. Deploy your app
+
+**Detailed instructions**: [docs/FIREBASE_SETUP.md](./docs/FIREBASE_SETUP.md)
+
+### Hosting Options (All Free)
+
+| Platform | Setup Time | Free Tier | Best For |
+|----------|-----------|-----------|----------|
+| **Firebase Hosting** | 5 min | 10 GB/month | Already using Firebase |
+| **Vercel** | 2 min | 100 GB/month | Easiest deployment |
+| **Netlify** | 3 min | 100 GB/month | Drag-and-drop |
+| **GitHub Pages** | 5 min | Unlimited* | Open source projects |
+
+**Estimated cost for beta testing**: **$0/month** for 10-100 users
+
+**Detailed instructions**: [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
+
+### Beta Testing Distribution
+
+**Easiest approach**: Deploy the web app and share the URL
+- Works on iPhone, Android, desktop
+- No app store required
+- Instant updates
+- Zero cost
+
+**Android APK options**:
+- Firebase App Distribution (free, recommended)
+- Google Play Internal Testing ($25 one-time)
+- Direct APK sharing (free, manual)
+
+**Detailed instructions**: [docs/BETA_TESTING.md](./docs/BETA_TESTING.md)
+
+---
+
+## 📚 Documentation
+
+- **[Quick Start Guide](./docs/QUICK_START.md)** - Get from zero to deployed in 30 minutes
+- **[Firebase Setup Guide](./docs/FIREBASE_SETUP.md)** - Configure Google Sign-On authentication
+- **[Deployment Guide](./docs/DEPLOYMENT.md)** - Host your app with minimal cost
+- **[Beta Testing Guide](./docs/BETA_TESTING.md)** - Distribute to friends and gather feedback
+
+---
+
+## 💰 Cost Estimate for Early Beta
+
+**Realistic costs for 10-50 beta testers:**
+
+| Service | Free Tier | Beta Cost |
+|---------|-----------|-----------|
+| Firebase Auth | 50K MAU | $0/month |
+| Firebase Hosting | 10 GB/month | $0/month |
+| Firebase App Distribution | 200 testers | $0/month |
+| **Total** | | **$0/month** |
+
+Scale to 1,000+ users before hitting any paid tiers!
