@@ -15,7 +15,12 @@ let auth: Auth | undefined;
 let googleProvider: GoogleAuthProvider | undefined;
 let initError: string | undefined;
 
-if (typeof window !== "undefined") {
+const hasFirebaseConfig = !!(
+  process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+);
+
+if (typeof window !== "undefined" && hasFirebaseConfig) {
   try {
     app = getApps().length ? getApp() : initializeApp(firebaseConfig);
     auth = getAuth(app);
