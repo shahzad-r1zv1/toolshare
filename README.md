@@ -194,17 +194,20 @@ toolshare/
 
 ## 🔐 Authentication & Deployment
 
-### Google Sign-On Status
+### What's implemented
 
-✅ **Already Implemented!** The login page and Firebase Authentication are fully set up.
+✅ **Email/password accounts** — create an account, sign in, password reset
+✅ **Google Sign-In** — popup with automatic redirect fallback on mobile
+✅ **Shared data via Firestore** — circles, items, requests, and loans sync in real time between all members of a circle
+✅ **Invite codes** — create a circle and friends join it with a 6-character code
+✅ **Offline demo mode** — with no Firebase config the app runs as a local single-user sandbox (data stays in the browser)
 
-**To enable for production:**
-1. Create a Firebase project (free)
-2. Enable Google Authentication in Firebase Console
-3. Add Firebase config to `.env.local`
-4. Deploy your app
+**To go live:**
+1. Create a Firebase project (free) and enable Email/Password + Google auth and Firestore
+2. Add Firebase config to `.env.local`
+3. `npm run build && firebase deploy`
 
-**Detailed instructions**: [docs/FIREBASE_SETUP.md](./docs/FIREBASE_SETUP.md)
+**Step-by-step instructions**: [docs/QUICK_START.md](./docs/QUICK_START.md)
 
 ### Hosting Options (All Free)
 

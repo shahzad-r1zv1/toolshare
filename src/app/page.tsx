@@ -3,14 +3,16 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
-import { load, save, seed, uid, now } from "@/lib/helpers";
-import type { State, Item, Request } from "@/lib/types";
+import { uid, now } from "@/lib/helpers";
+import { useAppState } from "@/lib/store";
+import type { Item, Request } from "@/lib/types";
 import { LoadingScreen, Toast } from "@/components/ui";
 import { MyCircle } from "@/components/MyCircle";
 import { MyItems } from "@/components/MyItems";
 import { Requests } from "@/components/Requests";
 import { LoanHistory } from "@/components/LoanHistory";
 import { DetailsModal } from "@/components/DetailsModal";
+import { CircleForms, CircleManagerModal } from "@/components/CircleManager";
 
 type Tab = "circle" | "items" | "reqs" | "history";
 
@@ -56,8 +58,8 @@ const TAB_CONFIG: { key: Tab; label: string; icon: React.ReactNode }[] = [
 export default function Page() {
   const { user, loading, error: authError, signOut } = useAuth();
   const router = useRouter();
-  const [state, setState] = useState<State>(() => load() || seed());
-  useEffect(() => save(state), [state]);
+  const { state, setState, ready, mode, syncError, createCircle, joinCircle } =
+    useAppState(user);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -66,16 +68,22 @@ export default function Page() {
   }, [user, loading, router]);
 
   const [tab, setTab] = useState<Tab>("circle");
-  const [activeCircleId, setActiveCircleId] = useState(
-    state.user.circles[0] || state.circles[0]?.id || ""
-  );
+  const [activeCircleId, setActiveCircleId] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
   const [detailsFor, setDetailsFor] = useState<Item | null>(null);
+  const [circlesOpen, setCirclesOpen] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "info";
   } | null>(null);
+
+  // Keep the active circle valid as circles arrive, change, or are joined.
+  useEffect(() => {
+    if (!state.circles.some((c) => c.id === activeCircleId)) {
+      setActiveCircleId(state.circles[0]?.id || "");
+    }
+  }, [state.circles, activeCircleId]);
 
   const activeCircle = state.circles.find((c) => c.id === activeCircleId);
   const categories = Array.from(
@@ -121,35 +129,68 @@ export default function Page() {
     });
   };
 
-  if (loading || !user) {
+  const copyInviteCode = async () => {
+    if (!activeCircle) return;
+    try {
+      await navigator.clipboard.writeText(activeCircle.inviteCode);
+      setToast({ message: "Invite code copied — share it with friends!", type: "success" });
+    } catch {
+      setToast({ message: `Invite code: ${activeCircle.inviteCode}`, type: "info" });
+    }
+  };
+
+  if (loading || !user || !ready) {
     return <LoadingScreen />;
   }
+
+  const hasCircles = state.circles.length > 0;
 
   return (
     <div className="min-h-screen bg-black text-gray-100">
       {/* Header */}
       <header className="p-4 border-b border-gray-800 bg-gray-900 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-xl font-semibold">ToolShare</h1>
-            <select
-              className="bg-gray-800 text-sm rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              value={activeCircleId}
-              onChange={(e) => setActiveCircleId(e.target.value)}
-              aria-label="Select circle"
-            >
-              {state.circles.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            {hasCircles && (
+              <select
+                className="bg-gray-800 text-sm rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                value={activeCircleId}
+                onChange={(e) => setActiveCircleId(e.target.value)}
+                aria-label="Select circle"
+              >
+                {state.circles.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            )}
             {activeCircle && (
-              <span className="text-xs text-gray-500 hidden sm:inline">
+              <button
+                onClick={copyInviteCode}
+                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                title="Click to copy the invite code"
+              >
                 Code:{" "}
                 <span className="font-mono text-gray-400">
                   {activeCircle.inviteCode}
                 </span>
+              </button>
+            )}
+            <button
+              onClick={() => setCirclesOpen(true)}
+              className="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
+              aria-label="Manage circles"
+            >
+              + Circles
+            </button>
+            {mode === "local" && (
+              <span
+                className="text-[10px] uppercase tracking-wide bg-yellow-900/40 text-yellow-400 px-2 py-0.5 rounded-full"
+                title="Firebase is not configured; data stays on this device only."
+              >
+                Offline demo
               </span>
             )}
           </div>
@@ -177,122 +218,155 @@ export default function Page() {
         </div>
       </header>
 
-      {authError && (
+      {(authError || syncError) && (
         <div className="bg-red-900/30 border-b border-red-800 px-4 py-3 text-center">
-          <p className="text-sm text-red-300">{authError}</p>
+          <p className="text-sm text-red-300">{authError || syncError}</p>
         </div>
       )}
 
-      <main className="p-4 max-w-5xl mx-auto">
-        {/* Search & Filter */}
-        <div className="flex gap-2 mb-4">
-          <div className="relative flex-1">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              aria-label="Search tools"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search tools..."
-              className="w-full pl-10 pr-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+      {!hasCircles ? (
+        /* First-run: no circles yet — create or join one. */
+        <main className="p-4 max-w-md mx-auto mt-8">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+            <h2 className="text-lg font-semibold mb-1">
+              Welcome{state.user.name ? `, ${state.user.name}` : ""}! 👋
+            </h2>
+            <p className="text-sm text-gray-400 mb-5">
+              ToolShare works in circles — small trusted groups that share
+              tools with each other. Create your first circle, or join a
+              friend&apos;s with their invite code.
+            </p>
+            <CircleForms
+              createCircle={createCircle}
+              joinCircle={joinCircle}
+              canJoin={mode === "cloud"}
+              onDone={(message) => setToast({ message, type: "success" })}
             />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                aria-label="Clear search"
+          </div>
+        </main>
+      ) : (
+        <main className="p-4 max-w-5xl mx-auto">
+          {/* Search & Filter */}
+          <div className="flex gap-2 mb-4">
+            <div className="relative flex-1">
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                ×
-              </button>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              <input
+                aria-label="Search tools"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search tools..."
+                className="w-full pl-10 pr-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <select
+              aria-label="Filter by category"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+            >
+              <option value="">All Categories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Tab Navigation */}
+          <nav className="flex gap-1 mb-6 border-b border-gray-800 pb-1" role="tablist">
+            {TAB_CONFIG.map(({ key, label, icon }) => {
+              const isActive = tab === key;
+              const badge =
+                key === "reqs" ? pendingRequestCount + activeLoansCount : 0;
+              return (
+                <button
+                  key={key}
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setTab(key)}
+                  className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                    isActive
+                      ? "bg-gray-900 text-emerald-400 border-b-2 border-emerald-400"
+                      : "text-gray-400 hover:text-gray-200 hover:bg-gray-900/50"
+                  }`}
+                >
+                  {icon}
+                  <span className="hidden sm:inline">{label}</span>
+                  {badge > 0 && (
+                    <span className="bg-emerald-600 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Tab Content */}
+          <div role="tabpanel">
+            {tab === "circle" && (
+              <MyCircle
+                state={state}
+                activeCircleId={activeCircleId}
+                search={search}
+                filter={filter}
+                onOpenDetails={onOpenDetails}
+              />
+            )}
+            {tab === "items" && (
+              <MyItems
+                state={state}
+                setState={setState}
+                activeCircleId={activeCircleId}
+              />
+            )}
+            {tab === "reqs" && (
+              <Requests
+                state={state}
+                setState={setState}
+                search={search}
+                filter={filter}
+              />
+            )}
+            {tab === "history" && (
+              <LoanHistory state={state} search={search} filter={filter} />
             )}
           </div>
-          <select
-            aria-label="Filter by category"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
-          >
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
+        </main>
+      )}
 
-        {/* Tab Navigation */}
-        <nav className="flex gap-1 mb-6 border-b border-gray-800 pb-1" role="tablist">
-          {TAB_CONFIG.map(({ key, label, icon }) => {
-            const isActive = tab === key;
-            const badge =
-              key === "reqs" ? pendingRequestCount + activeLoansCount : 0;
-            return (
-              <button
-                key={key}
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setTab(key)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                  isActive
-                    ? "bg-gray-900 text-emerald-400 border-b-2 border-emerald-400"
-                    : "text-gray-400 hover:text-gray-200 hover:bg-gray-900/50"
-                }`}
-              >
-                {icon}
-                <span className="hidden sm:inline">{label}</span>
-                {badge > 0 && (
-                  <span className="bg-emerald-600 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">
-                    {badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Tab Content */}
-        <div role="tabpanel">
-          {tab === "circle" && (
-            <MyCircle
-              state={state}
-              activeCircleId={activeCircleId}
-              search={search}
-              filter={filter}
-              onOpenDetails={onOpenDetails}
-            />
-          )}
-          {tab === "items" && (
-            <MyItems
-              state={state}
-              setState={setState}
-              activeCircleId={activeCircleId}
-            />
-          )}
-          {tab === "reqs" && (
-            <Requests
-              state={state}
-              setState={setState}
-              search={search}
-              filter={filter}
-            />
-          )}
-          {tab === "history" && (
-            <LoanHistory state={state} search={search} filter={filter} />
-          )}
-        </div>
-      </main>
+      {/* Circle management modal */}
+      {circlesOpen && (
+        <CircleManagerModal
+          createCircle={createCircle}
+          joinCircle={joinCircle}
+          canJoin={mode === "cloud"}
+          onClose={() => setCirclesOpen(false)}
+          onDone={(message) => setToast({ message, type: "success" })}
+        />
+      )}
 
       {/* Details Modal */}
       {detailsFor && (

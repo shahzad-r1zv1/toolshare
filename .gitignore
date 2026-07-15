@@ -24,6 +24,11 @@
 .DS_Store
 *.pem
 
+# local verification artifacts
+/verify-shots/
+/.firebase/
+.firebaserc
+
 # debug
 npm-debug.log*
 yarn-debug.log*

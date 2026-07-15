@@ -1,284 +1,132 @@
-# Quick Start Guide for Beta Testing
+# Quick Start: From Zero to a Live, Shareable App
 
-**Goal**: Get ToolShare running with Google Sign-On and share it with friends in under 30 minutes.
+**Goal**: ToolShare live on the internet, with real accounts (email/password **and** Google) and real shared data between friends. Time: ~30 minutes. Cost: $0.
 
----
+ToolShare has two modes:
 
-## Step 1: Set Up Firebase (10 minutes)
-
-Firebase provides free authentication for up to 50,000 monthly users.
-
-### Actions
-
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Click **Add project** → Name it `toolshare` → Disable Analytics → **Create**
-3. Click **Web icon** (`</>`) → App nickname: `ToolShare Web` → **Register**
-4. **Copy the config values** (you'll need them in Step 2)
-5. Go to **Authentication** → **Get started** → **Sign-in method** → **Google** → **Enable** → Add your email → **Save**
-6. Click **Android icon** → Package name: `com.yourname.toolshare` → Download `google-services.json` → Save for later
-
-**Done!** Firebase is ready.
+- **Offline demo mode** — no setup at all. `npm run dev`, open the app, and you get a local sandbox with sample data (badge says "Offline demo"). Data never leaves the browser.
+- **Cloud mode** — Firebase configured. Real login, and circles/items/requests sync between everyone through Firestore in real time. This is what you deploy.
 
 ---
 
-## Step 2: Configure Your Local Environment (2 minutes)
+## Step 1: Create the Firebase project (5 min)
 
-### Actions
+1. Go to [console.firebase.google.com](https://console.firebase.google.com/) and sign in with your Google account.
+2. Click **Create a project** → name it `toolshare` → Analytics is optional (Disable is fine) → **Create project**.
+3. When it opens, click the **Web icon (`</>`)** on the project home page.
+4. App nickname: `ToolShare Web` → **Register app** (skip Hosting checkbox for now).
+5. You'll see a `firebaseConfig` code block. **Keep this tab open** — you'll copy these values in Step 4.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/shahzad-r1zv1/toolshare.git
-   cd toolshare
-   ```
+## Step 2: Enable sign-in methods (3 min)
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+In the Firebase Console, left sidebar → **Build → Authentication** → **Get started**, then on the **Sign-in method** tab:
 
-3. Create environment file:
-   ```bash
-   cp .env.local.example .env.local
-   ```
+1. Click **Email/Password** → toggle **Enable** → **Save**.
+2. Click **Add new provider** → **Google** → toggle **Enable** → pick a support email → **Save**.
 
-4. Edit `.env.local` and paste your Firebase config from Step 1:
-   ```env
-   NEXT_PUBLIC_FIREBASE_API_KEY=AIza...
-   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project
-   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
-   NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abc123
-   ```
+That's both login options the app offers.
 
-**Done!** Your local environment is configured.
+## Step 3: Enable Firestore (the shared database) (3 min)
 
----
+1. Left sidebar → **Build → Firestore Database** → **Create database**.
+2. Pick a location near you (e.g., `us-central1` / `northamerica-northeast1`) → **Next**.
+3. Choose **Start in production mode** → **Create**. (Our own rules get deployed in Step 6; production mode just means "locked until rules say otherwise".)
+4. Go to the **Rules** tab, replace the contents with the rules from this repo's [`firestore.rules`](../firestore.rules), and click **Publish**. (If you use the Firebase CLI in Step 6, `firebase deploy` can do this for you instead.)
 
-## Step 3: Test Locally (5 minutes)
+## Step 4: Configure the app locally (2 min)
 
-### Actions
+In the project folder:
 
-1. Start the development server:
-   ```bash
-   npm run dev
-   ```
+```bash
+cp .env.local.example .env.local     # PowerShell: copy .env.local.example .env.local
+```
 
-2. Open [http://localhost:3000](http://localhost:3000)
+Open `.env.local` and fill in the values from the `firebaseConfig` block in Step 1:
 
-3. You should see the login page with **"Sign in with Google"** button
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=AIza...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=toolshare-xxxxx.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=toolshare-xxxxx
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=toolshare-xxxxx.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
+NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abc123
+```
 
-4. Click the button and sign in with your Google account
+(Lost the config? Firebase Console → ⚙️ **Project settings** → **General** → scroll to **Your apps**.)
 
-5. Explore the app:
-   - Add a tool to your circle
-   - Browse available tools
-   - Test the search feature
+## Step 5: Test locally (5 min)
 
-**Done!** Google Sign-On is working locally.
+```bash
+npm install
+npm run dev
+```
 
----
+Open [http://localhost:3000](http://localhost:3000). You should land on the login page (no "Offline demo" badge after login — if you see that badge, `.env.local` isn't being picked up; restart the dev server).
 
-## Step 4: Deploy to Firebase Hosting (5 minutes)
+Try the real flow:
 
-Firebase Hosting is free (10 GB storage, 360 MB/day bandwidth) and perfect for beta testing.
+1. **Create Account** tab → enter name/email/password → you land on the welcome screen.
+2. Create a circle → note the **invite code** in the header (click it to copy).
+3. **My Items** → add a tool.
+4. Open a second browser (or incognito window), sign in with a *different* account (e.g., "Continue with Google"), and **Join with the invite code** → you should see the first account's tool appear. Request it; approve from the first browser. That round trip proves the shared database works.
 
-### Actions
+## Step 6: Deploy to Firebase Hosting (10 min)
 
-1. Install Firebase CLI:
-   ```bash
-   npm install -g firebase-tools
-   firebase login
-   ```
+```bash
+npm install -g firebase-tools
+firebase login
+firebase use --add        # pick your toolshare project, alias "default"
+npm run build             # produces the static site in out/
+firebase deploy           # deploys hosting (out/) AND firestore.rules
+```
 
-2. Initialize Firebase Hosting:
-   ```bash
-   firebase init hosting
-   ```
+`firebase.json` in this repo is already configured (`public: "out"`, rules file wired up), so no `firebase init` prompts are needed.
 
-   Configuration:
-   - **Use existing project**: Select your project from Step 1
-   - **Public directory**: `out`
-   - **Single-page app**: `Yes`
-   - **GitHub deploys**: `No` (or `Yes` if you want automatic deploys)
-   - **Overwrite index.html**: `No`
+Your app is now live at:
 
-3. Build and deploy:
-   ```bash
-   npm run build
-   firebase deploy --only hosting
-   ```
+- `https://<your-project-id>.web.app`
 
-4. Your app is live! Copy the URL (something like `https://your-project.web.app`)
+**One last required step**: authorize your live domain for login.
+Firebase Console → **Authentication → Settings → Authorized domains** → confirm `<your-project-id>.web.app` is listed (it usually is automatically). If you later add a custom domain, add it here too.
 
-**Done!** Your app is deployed and accessible to anyone.
+### Re-deploying after changes
 
----
+```bash
+npm run build
+firebase deploy --only hosting
+```
 
-## Step 5: Test Production App (3 minutes)
+### Alternative: Vercel (if you prefer)
 
-### Actions
+```bash
+npm i -g vercel
+vercel          # answer prompts; add the six NEXT_PUBLIC_* env vars when asked
+vercel --prod
+```
 
-1. Open your Firebase Hosting URL in a new browser (use incognito/private mode)
+Then add your `*.vercel.app` domain to Firebase **Authentication → Settings → Authorized domains**, or Google login will be blocked on the deployed site.
 
-2. Test the full flow:
-   - Sign in with Google (should show Google's OAuth popup)
-   - Add a tool
-   - Create or join a circle
-   - Sign out and sign back in
+## Step 7: Invite your beta testers (2 min)
 
-3. Test on mobile:
-   - Open the URL on your phone
-   - Sign in with Google
-   - Everything should work smoothly
+Send friends two things:
 
-**Done!** Production deployment is verified.
+1. The URL (`https://<your-project-id>.web.app`)
+2. Your circle's **invite code** (click the code in the app header to copy it)
 
----
-
-## Step 6: Share with Friends (5 minutes)
-
-### Actions
-
-1. **Prepare your invite message** (customize this):
-
-   ```
-   👋 Hey! I built an app to help us share tools.
-
-   🔧 ToolShare: https://your-project.web.app
-
-   You can:
-   - See what tools everyone has
-   - Request to borrow something
-   - Track who borrowed what
-
-   Sign in with your Google account to try it!
-   Let me know what you think.
-   ```
-
-2. **Share the URL** via:
-   - Text message / WhatsApp
-   - Email
-   - Group chat
-
-3. **Create a circle** for your group:
-   - In the app, note the **Circle Code** (shown in the header)
-   - Share the code with your friends
-   - They can join your circle and see your tools
-
-4. **Collect feedback**:
-   - Ask friends about their experience
-   - Note any bugs or issues
-   - Listen to feature requests
-
-**Done!** Your friends can now use the app.
-
----
-
-## Optional: Build Android APK
-
-If you want a native Android app (not required - the web app works great on phones):
-
-### Actions
-
-1. Build the web app:
-   ```bash
-   npm run build
-   npx cap sync android
-   ```
-
-2. Build the APK:
-   ```bash
-   cd android
-   ./gradlew assembleDebug
-   ```
-
-3. APK location: `android/app/build/outputs/apk/debug/app-debug.apk`
-
-4. Install on your phone:
-   ```bash
-   adb install android/app/build/outputs/apk/debug/app-debug.apk
-   ```
-
-**For distributing to friends**, see [BETA_TESTING.md](./BETA_TESTING.md) for Firebase App Distribution or Google Play Internal Testing options.
+They create an account (or use Google), enter the code on the welcome screen, and they're in your circle. Works on iPhone, Android, and desktop browsers — no app store needed. On a phone, "Add to Home Screen" makes it feel like an app.
 
 ---
 
 ## Troubleshooting
 
-### Issue: "Firebase is not configured"
+| Symptom | Fix |
+|---|---|
+| "Offline demo" badge after configuring Firebase | `.env.local` missing/typo'd, or dev server not restarted after editing it. |
+| Google popup closes with an error about domain | Add the domain to **Authentication → Settings → Authorized domains**. |
+| "This sign-in method isn't enabled" | Enable Email/Password and/or Google in **Authentication → Sign-in method**. |
+| "Could not load shared data… check Firestore rules" | Firestore not created (Step 3) or rules not published (`firebase deploy --only firestore:rules`). |
+| Created account but circle/join does nothing | Open the browser dev console; almost always a Firestore rules/setup issue. |
 
-**Solution**:
-- Verify `.env.local` exists and has all 6 variables
-- Restart your dev server: `Ctrl+C` then `npm run dev`
+## Costs
 
-### Issue: Google Sign-In popup closes immediately
-
-**Solution**:
-- In Firebase Console → **Authentication** → **Settings** → **Authorized domains**
-- Add `localhost` for development
-- For production, your Firebase Hosting domain should be auto-added
-
-### Issue: "This app is not verified" warning during sign-in
-
-**Solution**:
-- This is normal during development
-- Click **Advanced** → **Go to [your app] (unsafe)**
-- For production launch, you can verify your app with Google (optional)
-
-### Issue: Build fails
-
-**Solution**:
-```bash
-# Clean install
-rm -rf node_modules package-lock.json
-npm install
-
-# Try build again
-npm run build
-```
-
----
-
-## What's Next?
-
-✅ **You now have**:
-- Google Sign-On working
-- App deployed and accessible to anyone
-- Friends using the app
-
-**Next steps**:
-
-1. **Gather feedback** from your first 5-10 users
-2. **Iterate** on features based on their needs
-3. **Consider**:
-   - Custom domain (Firebase Hosting supports this)
-   - Analytics (Firebase Analytics is free)
-   - Crash reporting (Firebase Crashlytics)
-   - Push notifications (when you're ready)
-
-**Need more details?** See:
-- [Firebase Setup Guide](./FIREBASE_SETUP.md) - Detailed Firebase configuration
-- [Deployment Guide](./DEPLOYMENT.md) - Alternative hosting options (Vercel, Netlify, etc.)
-- [Beta Testing Guide](./BETA_TESTING.md) - Advanced distribution methods
-
----
-
-## Cost Summary
-
-| What | Cost |
-|------|------|
-| Firebase Authentication | $0 (up to 50K users) |
-| Firebase Hosting | $0 (10 GB, 360 MB/day) |
-| Domain (optional) | $10-15/year |
-| **Total for Beta** | **$0/month** |
-
-You can comfortably support 50-100 beta testers without any costs!
-
----
-
-## Questions?
-
-Check the detailed guides in the `docs/` folder or open an issue on GitHub.
-
-Happy testing! 🎉
+Firebase free tier: 50K monthly auth users, 1 GiB Firestore storage, 50K reads/20K writes per day, 10 GB hosting transfer/month. A friends-and-family beta won't get near any of these limits. **$0/month.**

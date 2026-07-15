@@ -65,6 +65,41 @@ export const seed = (): State => {
   return { user, friends, circles: [circle], items, requests: [], loans: [] };
 };
 
+// Photos are stored inline (base64) in shared circle documents, so they must
+// stay small — Firestore caps a document at 1 MB.
+const MAX_PHOTO_DIM = 900;
+const PHOTO_QUALITY = 0.7;
+
+const downscaleImage = (dataUrl: string): Promise<string> =>
+  new Promise((resolve) => {
+    if (typeof document === "undefined" || typeof Image === "undefined") {
+      resolve(dataUrl);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, MAX_PHOTO_DIM / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(dataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const compressed = canvas.toDataURL("image/jpeg", PHOTO_QUALITY);
+        // Re-encoding can occasionally produce a larger result; keep the smaller.
+        resolve(compressed.length < dataUrl.length ? compressed : dataUrl);
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+
 export const filesTo64 = async (arr: File[]): Promise<string[]> => {
   const res: string[] = [];
   for (const f of arr) {
@@ -74,7 +109,7 @@ export const filesTo64 = async (arr: File[]): Promise<string[]> => {
       r.onerror = reject;
       r.readAsDataURL(f);
     });
-    res.push(b64);
+    res.push(await downscaleImage(b64));
   }
   return res;
 };
