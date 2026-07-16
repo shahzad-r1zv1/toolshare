@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Button, Card, Modal, EmptyState, ItemPhoto, Toast } from "./ui";
-import { uid, filesTo64, DATE_FMT } from "@/lib/helpers";
+import { uid, filesTo64, DATE_FMT, findOverlappingLoan } from "@/lib/helpers";
 import type { State, Request, Loan } from "@/lib/types";
 
 export function Requests({
@@ -49,6 +49,16 @@ export function Requests({
   } | null>(null);
 
   const approve = (r: Request) => {
+    const conflict = findOverlappingLoan(state.loans, r.itemId, r.startDate, r.endDate);
+    if (conflict) {
+      setToast({
+        message: `Can't approve — "${findItem(r.itemId)?.title}" is already booked ${DATE_FMT(
+          conflict.startDate
+        )} → ${DATE_FMT(conflict.endDate)}.`,
+        type: "error",
+      });
+      return;
+    }
     const loan: Loan = {
       id: uid(),
       itemId: r.itemId,

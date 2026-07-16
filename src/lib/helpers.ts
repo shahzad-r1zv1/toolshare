@@ -1,4 +1,4 @@
-import type { State, User, Friend, Circle, Item } from "./types";
+import type { State, User, Friend, Circle, Item, Loan } from "./types";
 
 export const uid = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
@@ -99,6 +99,27 @@ const downscaleImage = (dataUrl: string): Promise<string> =>
     img.onerror = () => resolve(dataUrl);
     img.src = dataUrl;
   });
+
+export const datesOverlap = (
+  aStart: string,
+  aEnd: string,
+  bStart: string,
+  bEnd: string
+): boolean => aStart <= bEnd && bStart <= aEnd;
+
+/** The active loan (if any) on this item that overlaps the given date range. */
+export const findOverlappingLoan = (
+  loans: Loan[],
+  itemId: string,
+  start: string,
+  end: string
+): Loan | undefined =>
+  loans.find(
+    (l) =>
+      l.itemId === itemId &&
+      l.status === "ACTIVE" &&
+      datesOverlap(l.startDate, l.endDate, start, end)
+  );
 
 export const filesTo64 = async (arr: File[]): Promise<string[]> => {
   const res: string[] = [];

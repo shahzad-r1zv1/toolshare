@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
-import { uid, now } from "@/lib/helpers";
+import { uid, now, DATE_FMT, findOverlappingLoan } from "@/lib/helpers";
 import { useAppState } from "@/lib/store";
 import type { Item, Request } from "@/lib/types";
 import { LoadingScreen, Toast } from "@/components/ui";
@@ -112,6 +112,14 @@ export default function Page() {
 
   const handleRequest = (start: string, end: string) => {
     if (!detailsFor) return;
+    const conflict = findOverlappingLoan(state.loans, detailsFor.id, start, end);
+    if (conflict) {
+      setToast({
+        message: `"${detailsFor.title}" is already booked ${DATE_FMT(conflict.startDate)} → ${DATE_FMT(conflict.endDate)}.`,
+        type: "error",
+      });
+      return;
+    }
     const req: Request = {
       id: uid(),
       itemId: detailsFor.id,

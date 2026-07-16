@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { seed, uid, now } from "@/lib/helpers";
+import { seed, uid, now, findOverlappingLoan } from "@/lib/helpers";
 import type { State, Item, Request, Loan } from "@/lib/types";
 
 /**
@@ -283,6 +283,47 @@ describe("Core Workflows", () => {
       state = deleteItem(state, ladderId);
       expect(state.items.find((i) => i.id === ladderId)).toBeUndefined();
       expect(state.requests.length).toBe(0);
+    });
+  });
+
+  describe("Double-Booking Prevention", () => {
+    it("flags a new request that overlaps an already-active loan on the same item", () => {
+      const myItem = state.items.find((i) => i.ownerId === "you")!;
+      state = requestItem(state, myItem.id, "alice", TEST_START, TEST_END);
+      state = approveRequest(state, state.requests[0].id);
+      expect(state.loans[0].status).toBe("ACTIVE");
+
+      const conflict = findOverlappingLoan(state.loans, myItem.id, "2026-03-12", "2026-03-18");
+      expect(conflict?.id).toBe(state.loans[0].id);
+    });
+
+    it("does not flag a request for dates after the active loan ends", () => {
+      const myItem = state.items.find((i) => i.ownerId === "you")!;
+      state = requestItem(state, myItem.id, "alice", TEST_START, TEST_END);
+      state = approveRequest(state, state.requests[0].id);
+
+      const conflict = findOverlappingLoan(state.loans, myItem.id, "2026-03-16", "2026-03-20");
+      expect(conflict).toBeUndefined();
+    });
+
+    it("does not flag overlapping dates on a different item", () => {
+      const myItem = state.items.find((i) => i.ownerId === "you")!;
+      const aliceItem = state.items.find((i) => i.ownerId === "alice")!;
+      state = requestItem(state, myItem.id, "alice", TEST_START, TEST_END);
+      state = approveRequest(state, state.requests[0].id);
+
+      const conflict = findOverlappingLoan(state.loans, aliceItem.id, TEST_START, TEST_END);
+      expect(conflict).toBeUndefined();
+    });
+
+    it("no longer flags a conflict once the loan is returned", () => {
+      const myItem = state.items.find((i) => i.ownerId === "you")!;
+      state = requestItem(state, myItem.id, "alice", TEST_START, TEST_END);
+      state = approveRequest(state, state.requests[0].id);
+      state = markReturned(state, state.loans[0].id);
+
+      const conflict = findOverlappingLoan(state.loans, myItem.id, TEST_START, TEST_END);
+      expect(conflict).toBeUndefined();
     });
   });
 
