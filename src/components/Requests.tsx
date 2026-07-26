@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Card, Modal, EmptyState, ItemPhoto, Toast } from "./ui";
-import { uid, filesTo64, DATE_FMT, findOverlappingLoan } from "@/lib/helpers";
+import { Button, Card, Modal, EmptyState, ItemPhoto, Toast, Celebration } from "./ui";
+import { uid, filesTo64, DATE_FMT, findOverlappingLoan, dueStatus } from "@/lib/helpers";
 import type { State, Request, Loan } from "@/lib/types";
 
 export function Requests({
@@ -43,16 +43,71 @@ export function Requests({
     .filter((l) => l.status === "ACTIVE")
     .filter(matchesFilter);
 
+  // Due-date digest (D-1/D/D+1): surfaces loans this user is involved in
+  // that are overdue, due today, or due tomorrow, regardless of search/filter.
+  const dueSoonLoans = state.loans
+    .filter((l) => l.status === "ACTIVE")
+    .filter((l) => {
+      const item = findItem(l.itemId);
+      return l.borrowerId === you || item?.ownerId === you;
+    })
+    .map((l) => ({ loan: l, status: dueStatus(l.endDate) }))
+    .filter((x) => x.status !== "ok")
+    .sort((a, b) => a.loan.endDate.localeCompare(b.loan.endDate));
+
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "info";
   } | null>(null);
+  const [celebrate, setCelebrate] = useState(false);
 
   const approve = (r: Request) => {
+    const item = findItem(r.itemId);
+
+    if (r.renewLoanId) {
+      // Renewal: extend the existing loan's due date instead of creating a
+      // new one. Still guard against the extended window colliding with a
+      // different loan on the same item.
+      const conflict = state.loans.find(
+        (l) =>
+          l.id !== r.renewLoanId &&
+          l.itemId === r.itemId &&
+          l.status === "ACTIVE" &&
+          l.startDate <= r.endDate &&
+          r.startDate <= l.endDate
+      );
+      if (conflict) {
+        setToast({
+          message: `Can't extend — "${item?.title}" is already booked ${DATE_FMT(
+            conflict.startDate
+          )} → ${DATE_FMT(conflict.endDate)}.`,
+          type: "error",
+        });
+        return;
+      }
+      setState((s) => ({
+        ...s,
+        requests: s.requests.map((x) =>
+          x.id === r.id ? { ...x, status: "APPROVED" as const } : x
+        ),
+        loans: s.loans.map((l) =>
+          l.id === r.renewLoanId
+            ? { ...l, endDate: r.endDate, renewalRequestId: undefined }
+            : l
+        ),
+      }));
+      setToast({
+        message: `Extended "${item?.title}" until ${DATE_FMT(r.endDate)}`,
+        type: "success",
+      });
+      setCelebrate(true);
+      return;
+    }
+
     const conflict = findOverlappingLoan(state.loans, r.itemId, r.startDate, r.endDate);
     if (conflict) {
       setToast({
-        message: `Can't approve — "${findItem(r.itemId)?.title}" is already booked ${DATE_FMT(
+        message: `Can't approve — "${item?.title}" is already booked ${DATE_FMT(
           conflict.startDate
         )} → ${DATE_FMT(conflict.endDate)}.`,
         type: "error",
@@ -62,6 +117,8 @@ export function Requests({
     const loan: Loan = {
       id: uid(),
       itemId: r.itemId,
+      itemTitle: item?.title || "Deleted item",
+      itemCategory: item?.category,
       borrowerId: r.borrowerId,
       startDate: r.startDate,
       endDate: r.endDate,
@@ -75,11 +132,11 @@ export function Requests({
       ),
       loans: [loan, ...s.loans],
     }));
-    const item = findItem(r.itemId);
     setToast({
       message: `Approved request for "${item?.title}"`,
       type: "success",
     });
+    setCelebrate(true);
   };
 
   const decline = (r: Request) => {
@@ -88,10 +145,50 @@ export function Requests({
       requests: s.requests.map((x) =>
         x.id === r.id ? { ...x, status: "DECLINED" as const } : x
       ),
+      loans: r.renewLoanId
+        ? s.loans.map((l) =>
+            l.id === r.renewLoanId ? { ...l, renewalRequestId: undefined } : l
+          )
+        : s.loans,
     }));
     const item = findItem(r.itemId);
     setToast({
-      message: `Declined request for "${item?.title}"`,
+      message: r.renewLoanId
+        ? `Extension request declined for "${item?.title}"`
+        : `Declined request for "${item?.title}"`,
+      type: "info",
+    });
+  };
+
+  const requestRenewal = (loan: Loan, newEndDate: string) => {
+    const req: Request = {
+      id: uid(),
+      itemId: loan.itemId,
+      borrowerId: loan.borrowerId,
+      startDate: loan.startDate,
+      endDate: newEndDate,
+      status: "PENDING",
+      createdAt: Date.now(),
+      renewLoanId: loan.id,
+    };
+    setState((s) => ({
+      ...s,
+      requests: [req, ...s.requests],
+      loans: s.loans.map((l) =>
+        l.id === loan.id ? { ...l, renewalRequestId: req.id } : l
+      ),
+    }));
+    setToast({
+      message: `Extension requested until ${DATE_FMT(newEndDate)}`,
+      type: "success",
+    });
+  };
+
+  const nudge = (l: Loan) => {
+    const title = findItem(l.itemId)?.title ?? l.itemTitle;
+    const borrower = findUser(l.borrowerId);
+    setToast({
+      message: `Nudge sent to ${borrower?.name || "the borrower"} about "${title}" 👋`,
       type: "info",
     });
   };
@@ -99,6 +196,9 @@ export function Requests({
   const [returning, setReturning] = useState<Loan | null>(null);
   const [returnNotes, setReturnNotes] = useState("");
   const [returnFiles, setReturnFiles] = useState<File[]>([]);
+
+  const [renewing, setRenewing] = useState<Loan | null>(null);
+  const [renewDate, setRenewDate] = useState("");
 
   const markReturned = async () => {
     if (!returning) return;
@@ -116,11 +216,12 @@ export function Requests({
           : x
       ),
     }));
-    const item = findItem(returning.itemId);
+    const title = findItem(returning.itemId)?.title ?? returning.itemTitle;
     setToast({
-      message: `"${item?.title}" marked as returned`,
+      message: `"${title}" marked as returned`,
       type: "success",
     });
+    setCelebrate(true);
     setReturning(null);
     setReturnNotes("");
     setReturnFiles([]);
@@ -131,6 +232,44 @@ export function Requests({
 
   return (
     <div className="space-y-6">
+      {dueSoonLoans.length > 0 && (
+        <div className="relative rounded-xl border border-warn/40 bg-warn-soft p-4 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-[2px] hazard-edge" />
+          <h3 className="font-display font-bold text-sm text-warn mb-2 pt-0.5 flex items-center gap-1.5 uppercase tracking-wide">
+            ⏰ Due Soon
+          </h3>
+          <ul className="space-y-1.5">
+            {dueSoonLoans.map(({ loan, status }) => {
+              const title = findItem(loan.itemId)?.title ?? loan.itemTitle;
+              const iAmBorrower = loan.borrowerId === you;
+              const label =
+                status === "overdue"
+                  ? "Overdue"
+                  : status === "due-today"
+                  ? "Due today"
+                  : "Due tomorrow";
+              return (
+                <li key={loan.id} className="text-sm text-ink flex items-center justify-between gap-2">
+                  <span className="truncate">
+                    <b>{title}</b>
+                    {iAmBorrower ? " — you have it" : " — you lent it"}
+                  </span>
+                  <span
+                    className={`text-xs shrink-0 px-2 py-0.5 rounded-full font-tag uppercase ${
+                      status === "overdue"
+                        ? "bg-bad text-white"
+                        : "bg-warn text-accent-ink"
+                    }`}
+                  >
+                    {label}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {hasNoContent && !search && !filter && (
         <EmptyState
           icon={
@@ -177,9 +316,9 @@ export function Requests({
 
       {incoming.length > 0 && (
         <section>
-          <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+          <h3 className="font-display font-bold text-lg mb-3 flex items-center gap-2 text-ink">
             Incoming Requests
-            <span className="text-xs font-normal bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-tag bg-accent text-accent-ink px-2 py-0.5 rounded-full">
               {incoming.length}
             </span>
           </h3>
@@ -193,10 +332,21 @@ export function Requests({
                     <ItemPhoto src={item?.photos[0]} alt={item?.title || ""} />
                     <div className="flex-1 min-w-0">
                       <div className="truncate">
-                        <b>{borrower?.name}</b> wants <b>{item?.title}</b>
+                        {r.renewLoanId ? (
+                          <>
+                            <b>{borrower?.name}</b> wants to extend{" "}
+                            <b>{item?.title}</b>
+                          </>
+                        ) : (
+                          <>
+                            <b>{borrower?.name}</b> wants <b>{item?.title}</b>
+                          </>
+                        )}
                       </div>
-                      <div className="text-xs text-gray-400">
-                        {DATE_FMT(r.startDate)} → {DATE_FMT(r.endDate)}
+                      <div className="text-xs text-ink-muted">
+                        {r.renewLoanId
+                          ? `New due date: ${DATE_FMT(r.endDate)}`
+                          : `${DATE_FMT(r.startDate)} → ${DATE_FMT(r.endDate)}`}
                       </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
@@ -215,7 +365,7 @@ export function Requests({
 
       {outgoing.length > 0 && (
         <section>
-          <h3 className="font-semibold text-lg mb-3">Outgoing Requests</h3>
+          <h3 className="font-display font-bold text-lg mb-3 text-ink">Outgoing Requests</h3>
           <div className="space-y-3">
             {outgoing.map((r) => {
               const item = findItem(r.itemId);
@@ -226,14 +376,17 @@ export function Requests({
                     <ItemPhoto src={item?.photos[0]} alt={item?.title || ""} />
                     <div className="flex-1 min-w-0">
                       <div className="truncate">
-                        Waiting on <b>{owner?.name}</b> to approve{" "}
+                        Waiting on <b>{owner?.name}</b> to{" "}
+                        {r.renewLoanId ? "approve extending" : "approve"}{" "}
                         <b>{item?.title}</b>
                       </div>
-                      <div className="text-xs text-gray-400">
-                        {DATE_FMT(r.startDate)} → {DATE_FMT(r.endDate)}
+                      <div className="text-xs text-ink-muted">
+                        {r.renewLoanId
+                          ? `New due date: ${DATE_FMT(r.endDate)}`
+                          : `${DATE_FMT(r.startDate)} → ${DATE_FMT(r.endDate)}`}
                       </div>
                     </div>
-                    <span className="text-xs text-yellow-400 bg-yellow-900/30 px-2 py-1 rounded-lg shrink-0">
+                    <span className="text-xs font-tag uppercase text-warn bg-warn-soft border border-warn/30 px-2 py-1 rounded-lg shrink-0">
                       Pending
                     </span>
                   </div>
@@ -246,41 +399,78 @@ export function Requests({
 
       {active.length > 0 && (
         <section>
-          <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+          <h3 className="font-display font-bold text-lg mb-3 flex items-center gap-2 text-ink">
             Active Loans
-            <span className="text-xs font-normal bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-tag bg-surface-sunken border border-border text-ink-muted px-2 py-0.5 rounded-full">
               {active.length}
             </span>
           </h3>
           <div className="space-y-3">
             {active.map((l) => {
               const item = findItem(l.itemId);
+              const title = item?.title ?? l.itemTitle;
               const borrower = findUser(l.borrowerId);
               const iOwnThisItem = item?.ownerId === you;
-              const overdue = new Date(l.endDate) < new Date();
+              const status = dueStatus(l.endDate);
+              const dueLabelClass =
+                status === "overdue"
+                  ? "text-bad font-medium"
+                  : status === "due-today"
+                  ? "text-warn font-medium"
+                  : status === "due-soon"
+                  ? "text-warn"
+                  : "text-ink-muted";
+              const dueSuffix =
+                status === "overdue"
+                  ? " • Overdue"
+                  : status === "due-today"
+                  ? " • Due today"
+                  : status === "due-soon"
+                  ? " • Due tomorrow"
+                  : "";
               return (
                 <Card key={l.id}>
-                  <div className="flex items-center gap-3">
-                    <ItemPhoto src={item?.photos[0]} alt={item?.title || ""} />
+                  <div
+                    className={`flex items-center gap-3 ${
+                      status === "overdue" ? "-m-4 p-4 rounded-xl bg-bad-soft" : ""
+                    }`}
+                  >
+                    <ItemPhoto src={item?.photos[0]} alt={title} />
                     <div className="flex-1 min-w-0">
-                      <div className="truncate">
-                        <b>{item?.title}</b> borrowed by{" "}
+                      <div className="truncate text-ink">
+                        <b>{title}</b> borrowed by{" "}
                         <b>{borrower?.name}</b>
                       </div>
-                      <div
-                        className={`text-xs ${
-                          overdue ? "text-red-400 font-medium" : "text-gray-400"
-                        }`}
-                      >
+                      <div className={`text-xs ${dueLabelClass}`}>
+                        {status === "overdue" && "🔥 "}
                         Due {DATE_FMT(l.endDate)}
-                        {overdue && " • Overdue"}
+                        {dueSuffix}
+                        {l.renewalRequestId && " • Extension pending"}
                       </div>
                     </div>
-                    {iOwnThisItem && (
-                      <Button onClick={() => setReturning(l)}>
-                        Mark Returned
-                      </Button>
-                    )}
+                    <div className="flex gap-2 shrink-0">
+                      {iOwnThisItem && status === "overdue" && (
+                        <Button kind="secondary" onClick={() => nudge(l)}>
+                          Nudge
+                        </Button>
+                      )}
+                      {!iOwnThisItem && !l.renewalRequestId && (
+                        <Button
+                          kind="secondary"
+                          onClick={() => {
+                            setRenewing(l);
+                            setRenewDate(l.endDate);
+                          }}
+                        >
+                          Request Extension
+                        </Button>
+                      )}
+                      {iOwnThisItem && (
+                        <Button onClick={() => setReturning(l)}>
+                          Mark Returned
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </Card>
               );
@@ -294,12 +484,12 @@ export function Requests({
           title="Complete Return"
           onClose={() => setReturning(null)}
         >
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-ink-muted">
             Confirm that{" "}
-            <b>{findItem(returning.itemId)?.title}</b> has been
+            <b className="text-ink">{findItem(returning.itemId)?.title ?? returning.itemTitle}</b> has been
             returned.
           </p>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-ink-muted mb-1.5">
             Return Notes (optional)
           </label>
           <textarea
@@ -307,9 +497,9 @@ export function Requests({
             onChange={(e) => setReturnNotes(e.target.value)}
             placeholder="Condition, any issues…"
             rows={2}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500 resize-none"
+            className="w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent resize-none"
           />
-          <label className="block text-sm font-medium text-gray-300 mb-1">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-ink-muted mb-1.5">
             Return Photos (optional)
           </label>
           <input
@@ -319,7 +509,7 @@ export function Requests({
             onChange={(e) =>
               setReturnFiles(Array.from(e.target.files || []))
             }
-            className="text-sm text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-800 file:px-3 file:py-2 file:text-sm file:text-gray-300 hover:file:bg-gray-700"
+            className="text-sm text-ink-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface-sunken file:px-3 file:py-2 file:text-sm file:text-ink file:font-medium hover:file:bg-surface-raised"
           />
           <div className="flex gap-2 pt-1">
             <Button onClick={markReturned}>Confirm Return</Button>
@@ -333,6 +523,41 @@ export function Requests({
         </Modal>
       )}
 
+      {renewing && (
+        <Modal title="Request Extension" onClose={() => setRenewing(null)}>
+          <p className="text-sm text-ink-muted">
+            Ask to keep{" "}
+            <b className="text-ink">{findItem(renewing.itemId)?.title ?? renewing.itemTitle}</b>{" "}
+            past its current due date of {DATE_FMT(renewing.endDate)}.
+          </p>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-ink-muted mb-1.5">
+            New Due Date
+          </label>
+          <input
+            type="date"
+            min={renewing.endDate}
+            value={renewDate}
+            onChange={(e) => setRenewDate(e.target.value)}
+            className="w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink focus:outline-none focus:border-accent"
+          />
+          <div className="flex gap-2 pt-1">
+            <Button
+              onClick={() => {
+                if (!renewDate || renewDate <= renewing.endDate) return;
+                requestRenewal(renewing, renewDate);
+                setRenewing(null);
+              }}
+              disabled={!renewDate || renewDate <= renewing.endDate}
+            >
+              Send Request
+            </Button>
+            <Button kind="secondary" onClick={() => setRenewing(null)}>
+              Cancel
+            </Button>
+          </div>
+        </Modal>
+      )}
+
       {toast && (
         <Toast
           message={toast.message}
@@ -340,6 +565,8 @@ export function Requests({
           onDismiss={() => setToast(null)}
         />
       )}
+
+      {celebrate && <Celebration onDone={() => setCelebrate(false)} />}
     </div>
   );
 }

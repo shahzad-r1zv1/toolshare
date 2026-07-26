@@ -14,6 +14,20 @@ import {
 import { uid, now, filesTo64 } from "@/lib/helpers";
 import type { State, Item } from "@/lib/types";
 
+const inputClass =
+  "w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent";
+
+const STARTER_CATEGORIES = [
+  "Power Tools",
+  "Hand Tools",
+  "Yard & Garden",
+  "Kitchen",
+  "Ladders",
+  "Camping",
+  "Cleaning",
+  "Automotive",
+];
+
 export function MyItems({
   state,
   setState,
@@ -26,6 +40,18 @@ export function MyItems({
   const myItems = state.items.filter(
     (i) => i.ownerId === state.user.id && i.circleId === activeCircleId
   );
+  const circleCategories = Array.from(
+    new Set(
+      state.items
+        .filter((i) => i.circleId === activeCircleId && i.category)
+        .map((i) => i.category as string)
+    )
+  );
+  const categoryChips = Array.from(
+    new Set([...circleCategories, ...STARTER_CATEGORIES])
+  ).slice(0, 8);
+  const hasActiveLoan = (itemId: string) =>
+    state.loans.some((l) => l.itemId === itemId && l.status === "ACTIVE");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Item | null>(null);
   const [title, setTitle] = useState("");
@@ -134,8 +160,8 @@ export function MyItems({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-lg">Your Items</h3>
-          <p className="text-xs text-gray-500">
+          <h3 className="font-display font-bold text-lg text-ink">Your Items</h3>
+          <p className="text-xs text-ink-muted">
             {myItems.length} {myItems.length === 1 ? "tool" : "tools"} shared
           </p>
         </div>
@@ -161,12 +187,12 @@ export function MyItems({
             <div className="flex items-center gap-3 min-w-0">
               <ItemPhoto src={item.photos[0]} alt={item.title} />
               <div className="min-w-0">
-                <div className="font-medium truncate">{item.title}</div>
+                <div className="font-medium truncate text-ink">{item.title}</div>
                 {item.category && (
-                  <div className="text-xs text-gray-400">{item.category}</div>
+                  <div className="text-xs text-ink-muted">{item.category}</div>
                 )}
                 {item.rv != null && (
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-ink-muted font-tag">
                     RV: ${item.rv}
                   </div>
                 )}
@@ -192,7 +218,7 @@ export function MyItems({
                 if (errors.title) setErrors((prev) => ({ ...prev, title: "" }));
               }}
               placeholder="e.g., Cordless Drill"
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+              className={inputClass}
               autoFocus
             />
           </FormField>
@@ -201,8 +227,24 @@ export function MyItems({
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="e.g., Power Tools"
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+              className={inputClass}
             />
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {categoryChips.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCategory(c)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${
+                    category === c
+                      ? "bg-accent border-accent text-accent-ink"
+                      : "bg-surface-sunken border-border text-ink-muted hover:border-border-strong hover:text-ink"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
           </FormField>
           <FormField label="Notes">
             <textarea
@@ -210,7 +252,7 @@ export function MyItems({
               onChange={(e) => setNote(e.target.value)}
               placeholder="Condition, accessories, usage tips…"
               rows={2}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500 resize-none"
+              className={`${inputClass} resize-none`}
             />
           </FormField>
           <div className="grid grid-cols-2 gap-3">
@@ -224,7 +266,7 @@ export function MyItems({
                   if (errors.rv) setErrors((prev) => ({ ...prev, rv: "" }));
                 }}
                 placeholder="0"
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                className={inputClass}
               />
             </FormField>
             <FormField label="Availability">
@@ -232,7 +274,7 @@ export function MyItems({
                 value={avail}
                 onChange={(e) => setAvail(e.target.value)}
                 placeholder="e.g., Weekends"
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                className={inputClass}
               />
             </FormField>
           </div>
@@ -242,7 +284,7 @@ export function MyItems({
               type="file"
               accept="image/*"
               onChange={(e) => setFiles(Array.from(e.target.files || []))}
-              className="text-sm text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-800 file:px-3 file:py-2 file:text-sm file:text-gray-300 hover:file:bg-gray-700"
+              className="text-sm text-ink-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface-sunken file:px-3 file:py-2 file:text-sm file:text-ink file:font-medium hover:file:bg-surface-raised"
             />
           </FormField>
           <div className="flex gap-2 pt-1">
@@ -250,8 +292,12 @@ export function MyItems({
               {saving ? "Saving…" : editing ? "Update" : "Save"}
             </Button>
             {editing && (
-              <Button kind="danger" onClick={() => setConfirmDelete(true)}>
-                Delete
+              <Button
+                kind="danger"
+                disabled={hasActiveLoan(editing.id)}
+                onClick={() => setConfirmDelete(true)}
+              >
+                {hasActiveLoan(editing.id) ? "On loan — can't delete" : "Delete"}
               </Button>
             )}
           </div>

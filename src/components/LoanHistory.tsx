@@ -22,10 +22,11 @@ export function LoanHistory({
     .filter((l) => l.status === "RETURNED")
     .filter((l) => {
       const it = findItem(l.itemId);
-      if (!it) return false;
+      const title = it?.title ?? l.itemTitle;
+      const category = it?.category ?? l.itemCategory;
       return (
-        it.title.toLowerCase().includes(search.toLowerCase()) &&
-        (!filter || it.category === filter)
+        title.toLowerCase().includes(search.toLowerCase()) &&
+        (!filter || category === filter)
       );
     });
 
@@ -79,29 +80,33 @@ export function LoanHistory({
 
   return (
     <div className="space-y-3">
-      <h3 className="font-semibold text-lg">
+      <h3 className="font-display font-bold text-lg text-ink">
         Loan History
-        <span className="text-xs text-gray-500 font-normal ml-2">
+        <span className="text-xs text-ink-faint font-tag ml-2">
           {history.length} {history.length === 1 ? "record" : "records"}
         </span>
       </h3>
       {history.map((l) => {
         const item = findItem(l.itemId);
+        const title = item?.title ?? l.itemTitle;
         const borrower = findUser(l.borrowerId);
         return (
           <Card key={l.id}>
             <div className="flex items-center gap-3">
-              <ItemPhoto src={item?.photos[0]} alt={item?.title || ""} />
+              <ItemPhoto src={item?.photos[0]} alt={title} />
               <div className="min-w-0">
-                <div className="truncate">
-                  <b>{item?.title}</b> was borrowed by{" "}
-                  <b>{borrower?.name}</b>
+                <div className="truncate text-ink">
+                  <b>{title}</b>
+                  {!item && (
+                    <span className="text-ink-faint italic"> (deleted)</span>
+                  )}{" "}
+                  was borrowed by <b>{borrower?.name}</b>
                 </div>
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-ink-muted">
                   {DATE_FMT(l.startDate)} → {DATE_FMT(l.endDate)}
                 </div>
                 {l.returnNotes && (
-                  <div className="text-xs text-gray-300 mt-1">
+                  <div className="text-xs text-ink-muted mt-1">
                     Notes: {l.returnNotes}
                   </div>
                 )}

@@ -20,6 +20,7 @@ function circleDoc(overrides: Partial<CircleDoc> = {}): CircleDoc {
     items: [],
     requests: [],
     loans: [],
+    wishlist: [],
     updatedAt: 1,
     ...overrides,
   };
@@ -94,6 +95,7 @@ describe("splitState", () => {
     const loan: Loan = {
       id: "l1",
       itemId: "i1",
+      itemTitle: "Item i1",
       borrowerId: FRIEND,
       startDate: "2026-06-01",
       endDate: "2026-06-05",
@@ -110,6 +112,7 @@ describe("splitState", () => {
       items: [i1, i2],
       requests: [req],
       loans: [loan],
+      wishlist: [],
     };
     const docs = splitState(state, prevDocs);
     expect(docs.c1.items.map((i) => i.id)).toEqual(["i1"]);
@@ -122,6 +125,7 @@ describe("splitState", () => {
     const oldLoan: Loan = {
       id: "l1",
       itemId: "gone",
+      itemTitle: "Gone Item",
       borrowerId: FRIEND,
       startDate: "2026-05-01",
       endDate: "2026-05-05",
@@ -136,6 +140,7 @@ describe("splitState", () => {
       items: [],
       requests: [],
       loans: [oldLoan],
+      wishlist: [],
     };
     const docs = splitState(state, prevDocs);
     expect(docs.c1.loans.map((l) => l.id)).toEqual(["l1"]);

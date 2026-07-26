@@ -31,7 +31,7 @@ function GoogleIcon() {
 }
 
 const inputClass =
-  "w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500";
+  "w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent";
 
 export default function LoginPage() {
   const {
@@ -111,38 +111,41 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-gray-100 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 max-w-sm w-full space-y-5">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold mb-1">ToolShare</h1>
-          <p className="text-gray-400 text-sm">
+    <div className="min-h-screen bg-bg text-ink flex items-center justify-center p-4">
+      <div className="relative bg-surface border border-border rounded-xl p-8 max-w-sm w-full space-y-5 overflow-hidden shadow-[0_12px_32px_hsl(var(--shadow-color)/0.3)]">
+        <div className="absolute top-0 left-0 right-0 h-[4px] hazard-edge" />
+        <div className="text-center pt-1">
+          <h1 className="text-2xl font-display font-extrabold tracking-tight mb-1 text-ink">
+            Tool<span className="text-accent">Share</span>
+          </h1>
+          <p className="text-ink-muted text-sm">
             Share tools with your trusted circles.
           </p>
         </div>
 
         {globalError && (
-          <div className="bg-yellow-900/30 border border-yellow-800 rounded-xl px-4 py-3 text-sm text-yellow-300">
+          <div className="bg-warn-soft border border-warn/40 rounded-lg px-4 py-3 text-sm text-warn">
             {globalError}
           </div>
         )}
         {error && (
-          <div className="bg-red-900/30 border border-red-800 rounded-xl px-4 py-3 text-sm text-red-300">
+          <div className="bg-bad-soft border border-bad/40 rounded-lg px-4 py-3 text-sm text-bad">
             {error}
           </div>
         )}
         {notice && (
-          <div className="bg-emerald-900/30 border border-emerald-800 rounded-xl px-4 py-3 text-sm text-emerald-300">
+          <div className="bg-good-soft border border-good/40 rounded-lg px-4 py-3 text-sm text-good">
             {notice}
           </div>
         )}
 
         {/* Sign in / Create account toggle */}
-        <div className="grid grid-cols-2 bg-gray-950 rounded-xl p-1 text-sm font-medium">
+        <div className="grid grid-cols-2 bg-surface-sunken border border-border rounded-lg p-1 text-sm font-semibold">
           <button
             type="button"
             onClick={() => switchMode("signin")}
-            className={`py-2 rounded-lg transition-colors ${
-              mode === "signin" ? "bg-gray-800 text-white" : "text-gray-400 hover:text-gray-200"
+            className={`py-2 rounded-md transition-colors ${
+              mode === "signin" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
             }`}
           >
             Sign In
@@ -150,8 +153,8 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => switchMode("signup")}
-            className={`py-2 rounded-lg transition-colors ${
-              mode === "signup" ? "bg-gray-800 text-white" : "text-gray-400 hover:text-gray-200"
+            className={`py-2 rounded-md transition-colors ${
+              mode === "signup" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
             }`}
           >
             Create Account
@@ -161,7 +164,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-3">
           {mode === "signup" && (
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">
+              <label htmlFor="name" className="block text-xs font-semibold uppercase tracking-wide text-ink-muted mb-1.5">
                 Your Name
               </label>
               <input
@@ -175,7 +178,7 @@ export default function LoginPage() {
             </div>
           )}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
+            <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wide text-ink-muted mb-1.5">
               Email
             </label>
             <input
@@ -189,7 +192,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
+            <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-wide text-ink-muted mb-1.5">
               Password
             </label>
             <input
@@ -206,7 +209,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent hover:bg-accent-strong text-accent-ink font-semibold rounded-lg transition-all active:translate-y-px shadow-[0_1px_0_0_var(--accent-strong)] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-surface"
           >
             {busy ? <Spinner size="sm" /> : mode === "signup" ? "Create Account" : "Sign In"}
           </button>
@@ -216,7 +219,7 @@ export default function LoginPage() {
               type="button"
               onClick={handleForgotPassword}
               disabled={busy}
-              className="w-full text-center text-xs text-gray-400 hover:text-gray-200 transition-colors"
+              className="w-full text-center text-xs text-ink-faint hover:text-ink-muted transition-colors"
             >
               Forgot password?
             </button>
@@ -224,15 +227,15 @@ export default function LoginPage() {
         </form>
 
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-gray-800" />
-          <span className="text-xs text-gray-500">or</span>
-          <div className="flex-1 h-px bg-gray-800" />
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-ink-faint">or</span>
+          <div className="flex-1 h-px bg-border" />
         </div>
 
         <button
           onClick={() => run(signInWithGoogle)}
           disabled={busy}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white text-gray-800 font-medium rounded-2xl hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-gray-900"
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white text-gray-800 font-semibold rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-surface"
         >
           {busy ? <Spinner size="sm" /> : <GoogleIcon />}
           Continue with Google

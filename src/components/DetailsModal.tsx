@@ -63,34 +63,34 @@ export function DetailsModal({
         <div className="space-y-2">
           {item.category && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 uppercase tracking-wide">Category</span>
-              <span className="text-sm text-gray-300">{item.category}</span>
+              <span className="text-xs text-ink-faint uppercase tracking-wide">Category</span>
+              <span className="text-sm text-ink-muted">{item.category}</span>
             </div>
           )}
           {item.note && (
             <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wide block mb-0.5">Notes</span>
-              <p className="text-sm text-gray-300">{item.note}</p>
+              <span className="text-xs text-ink-faint uppercase tracking-wide block mb-0.5">Notes</span>
+              <p className="text-sm text-ink-muted">{item.note}</p>
             </div>
           )}
           {item.rv != null && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 uppercase tracking-wide">Replacement Value</span>
-              <span className="text-sm text-gray-300">${item.rv}</span>
+              <span className="text-xs text-ink-faint uppercase tracking-wide">Replacement Value</span>
+              <span className="text-sm text-ink-muted font-tag">${item.rv}</span>
             </div>
           )}
           {item.avail && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 uppercase tracking-wide">Availability</span>
-              <span className="text-sm text-gray-300">{item.avail}</span>
+              <span className="text-xs text-ink-faint uppercase tracking-wide">Availability</span>
+              <span className="text-sm text-ink-muted">{item.avail}</span>
             </div>
           )}
         </div>
 
         {!isOwnItem && (
           <>
-            <div className="border-t border-gray-800 pt-3 mt-1">
-              <p className="text-sm text-gray-400 mb-2">
+            <div className="border-t border-border pt-3 mt-1">
+              <p className="text-sm text-ink-muted mb-2">
                 Request to borrow this tool:
               </p>
               <div className="grid grid-cols-2 gap-3">
@@ -104,7 +104,7 @@ export function DetailsModal({
                       if (errors.start)
                         setErrors((prev) => ({ ...prev, start: "" }));
                     }}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                    className="w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink focus:outline-none focus:border-accent"
                   />
                 </FormField>
                 <FormField label="End Date" error={errors.end}>
@@ -117,7 +117,7 @@ export function DetailsModal({
                       if (errors.end)
                         setErrors((prev) => ({ ...prev, end: "" }));
                     }}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                    className="w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink focus:outline-none focus:border-accent"
                   />
                 </FormField>
               </div>
@@ -127,7 +127,7 @@ export function DetailsModal({
         )}
 
         {isOwnItem && (
-          <p className="text-sm text-gray-500 italic text-center py-2">
+          <p className="text-sm text-ink-faint italic text-center py-2">
             This is your own item
           </p>
         )}

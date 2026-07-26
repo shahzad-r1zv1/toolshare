@@ -29,6 +29,15 @@
 /.firebase/
 .firebaserc
 
+# editor/IDE
+/.idea/
+/.claude/
+
+# signing keys / secrets
+/key
+*.jks
+*.keystore
+
 # debug
 npm-debug.log*
 yarn-debug.log*

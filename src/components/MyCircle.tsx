@@ -38,6 +38,17 @@ export function MyCircle({
     0
   );
 
+  const completedLoans = state.loans.filter(
+    (l) =>
+      l.status === "RETURNED" &&
+      state.items.some((i) => i.id === l.itemId && i.circleId === activeCircleId)
+  ).length;
+  const activeLoans = state.loans.filter(
+    (l) =>
+      l.status === "ACTIVE" &&
+      state.items.some((i) => i.id === l.itemId && i.circleId === activeCircleId)
+  ).length;
+
   if (members.length === 0) {
     return (
       <EmptyState
@@ -68,6 +79,25 @@ export function MyCircle({
 
   return (
     <div className="space-y-6">
+      {!search && !filter && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="relative bg-surface border border-border rounded-xl p-3 text-center overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-accent" />
+            <div className="text-2xl font-display font-bold text-ink font-tag">{totalItems}</div>
+            <div className="text-xs text-ink-muted mt-0.5 uppercase tracking-wide">Tools shared</div>
+          </div>
+          <div className="relative bg-surface border border-border rounded-xl p-3 text-center overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-warn" />
+            <div className="text-2xl font-display font-bold text-ink font-tag">{activeLoans}</div>
+            <div className="text-xs text-ink-muted mt-0.5 uppercase tracking-wide">Out on loan</div>
+          </div>
+          <div className="relative bg-surface border border-border rounded-xl p-3 text-center overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-good" />
+            <div className="text-2xl font-display font-bold text-ink font-tag">{completedLoans}</div>
+            <div className="text-xs text-ink-muted mt-0.5 uppercase tracking-wide">Loans completed</div>
+          </div>
+        </div>
+      )}
       {members.map((m) => {
         const owned = itemsByMember(m.id);
         if (owned.length === 0 && (search || filter)) return null;
@@ -75,13 +105,13 @@ export function MyCircle({
           <div key={m.id}>
             <div className="flex items-center gap-2 mb-3">
               <Avatar name={m.name} />
-              <h2 className="font-semibold">{m.name}</h2>
-              <span className="text-xs text-gray-500">
+              <h2 className="font-display font-semibold text-ink">{m.name}</h2>
+              <span className="text-xs text-ink-faint font-tag">
                 {owned.length} {owned.length === 1 ? "tool" : "tools"}
               </span>
             </div>
             {owned.length === 0 && (
-              <p className="text-sm text-gray-500 italic ml-10">
+              <p className="text-sm text-ink-faint italic ml-10">
                 No tools shared yet
               </p>
             )}
@@ -91,14 +121,14 @@ export function MyCircle({
                   <div className="flex gap-3 items-center">
                     <ItemPhoto src={item.photos[0]} alt={item.title} size="lg" />
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{item.title}</div>
+                      <div className="font-medium truncate text-ink">{item.title}</div>
                       {item.category && (
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-ink-muted">
                           {item.category}
                         </div>
                       )}
                       {item.avail && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-ink-faint">
                           {item.avail}
                         </div>
                       )}

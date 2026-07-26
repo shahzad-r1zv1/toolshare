@@ -16,14 +16,17 @@ export function Button({
   disabled?: boolean;
 }) {
   const base =
-    "px-3 py-2 rounded-2xl text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-1 focus:ring-offset-gray-900";
+    "px-3.5 py-2 rounded-lg text-sm font-semibold tracking-tight transition-all duration-100 active:translate-y-px focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-bg";
   const map: Record<string, string> = {
-    primary: "bg-emerald-600 hover:bg-emerald-500 text-white",
-    secondary: "bg-gray-800 hover:bg-gray-700 text-gray-100",
-    ghost: "bg-transparent hover:bg-gray-800 text-gray-100",
-    danger: "bg-red-600 hover:bg-red-500 text-white",
+    primary:
+      "bg-accent hover:bg-accent-strong text-accent-ink shadow-[0_1px_0_0_var(--accent-strong)] hover:shadow-[0_2px_0_0_var(--accent-strong)]",
+    secondary:
+      "bg-surface-raised hover:bg-surface-sunken text-ink border border-border-strong",
+    ghost: "bg-transparent hover:bg-surface-raised text-ink",
+    danger:
+      "bg-bad hover:brightness-110 text-white shadow-[0_1px_0_0_rgba(0,0,0,0.25)]",
   };
-  const disabledStyle = "opacity-50 cursor-not-allowed";
+  const disabledStyle = "opacity-40 cursor-not-allowed active:translate-y-0";
   return (
     <button
       type={type}
@@ -38,15 +41,42 @@ export function Button({
 
 export function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 shadow-sm">
+    <div className="bg-surface border border-border rounded-xl p-4 shadow-[0_1px_2px_hsl(var(--shadow-color)/0.25)]">
       {children}
     </div>
   );
 }
 
+/**
+ * Warm, workshop-toned palette so each circle member gets a distinct but
+ * harmonious color — variations on amber/rust/olive rather than a generic
+ * rainbow of SaaS brand colors.
+ */
+const AVATAR_COLORS = [
+  "#c67f1f", // accent amber
+  "#b3402b", // rust
+  "#5c7a4f", // olive
+  "#7a5c8a", // plum
+  "#3f7d55", // workshop green
+  "#a8690f", // burnt orange
+  "#5f7d8a", // slate blue
+  "#8a5c3f", // leather brown
+];
+
+const colorForName = (name: string): string => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+
 export function Avatar({ name }: { name: string }) {
   return (
-    <div className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-700 text-white text-xs font-bold shrink-0">
+    <div
+      className="w-8 h-8 flex items-center justify-center rounded-full text-white text-xs font-bold shrink-0 font-display"
+      style={{ backgroundColor: colorForName(name) }}
+    >
       {name.charAt(0).toUpperCase()}
     </div>
   );
@@ -61,9 +91,17 @@ export function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   return (
     <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -71,12 +109,13 @@ export function Modal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-gray-950 border border-gray-800 rounded-2xl p-4 max-w-lg w-full animate-in">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="font-semibold text-lg">{title}</h4>
+      <div className="relative bg-surface-raised border border-border rounded-xl p-4 max-w-lg w-full animate-in shadow-[0_12px_32px_hsl(var(--shadow-color)/0.4)] overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-[3px] hazard-edge" />
+        <div className="flex items-center justify-between mb-3 pt-1">
+          <h4 className="font-display font-bold text-lg tracking-tight text-ink">{title}</h4>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors"
+            className="p-1 rounded-lg hover:bg-surface-sunken text-ink-muted hover:text-ink transition-colors"
             aria-label="Close dialog"
           >
             <svg
@@ -104,7 +143,7 @@ export function Spinner({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   const sizeMap = { sm: "w-4 h-4", md: "w-6 h-6", lg: "w-8 h-8" };
   return (
     <svg
-      className={`${sizeMap[size]} animate-spin text-emerald-500`}
+      className={`${sizeMap[size]} animate-spin text-accent`}
       fill="none"
       viewBox="0 0 24 24"
       role="status"
@@ -129,9 +168,11 @@ export function Spinner({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
 
 export function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-black text-gray-100 flex flex-col items-center justify-center gap-3">
+    <div className="min-h-screen bg-bg text-ink flex flex-col items-center justify-center gap-3">
       <Spinner size="lg" />
-      <p className="text-gray-400 text-sm">Loading ToolShare…</p>
+      <p className="text-ink-muted text-sm font-display tracking-wide uppercase">
+        Loading ToolShare…
+      </p>
     </div>
   );
 }
@@ -148,13 +189,11 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-      {icon && (
-        <div className="text-gray-600 mb-3">{icon}</div>
-      )}
-      <h3 className="text-gray-300 font-medium mb-1">{title}</h3>
+    <div className="flex flex-col items-center justify-center py-14 px-4 text-center border border-dashed border-border rounded-xl">
+      {icon && <div className="text-ink-faint mb-3">{icon}</div>}
+      <h3 className="text-ink font-display font-semibold text-base mb-1">{title}</h3>
       {description && (
-        <p className="text-gray-500 text-sm max-w-xs">{description}</p>
+        <p className="text-ink-muted text-sm max-w-xs">{description}</p>
       )}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -171,9 +210,14 @@ export function Toast({
   onDismiss: () => void;
 }) {
   const colorMap = {
-    success: "bg-emerald-900/90 border-emerald-700 text-emerald-100",
-    error: "bg-red-900/90 border-red-700 text-red-100",
-    info: "bg-blue-900/90 border-blue-700 text-blue-100",
+    success: "bg-good-soft border-good text-ink",
+    error: "bg-bad-soft border-bad text-ink",
+    info: "bg-accent-soft border-accent text-ink",
+  };
+  const iconColorMap = {
+    success: "text-good",
+    error: "text-bad",
+    info: "text-accent",
   };
   const iconMap = {
     success: "✓",
@@ -188,18 +232,68 @@ export function Toast({
 
   return (
     <div
-      className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-3 rounded-xl border text-sm font-medium shadow-lg flex items-center gap-2 ${colorMap[type]}`}
+      className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-3 rounded-lg border text-sm font-medium shadow-[0_8px_24px_hsl(var(--shadow-color)/0.35)] flex items-center gap-2 animate-in ${colorMap[type]}`}
       role="alert"
     >
-      <span className="font-bold">{iconMap[type]}</span>
+      <span className={`font-bold ${iconColorMap[type]}`}>{iconMap[type]}</span>
       {message}
       <button
         onClick={onDismiss}
-        className="ml-2 opacity-70 hover:opacity-100"
+        className="ml-2 opacity-60 hover:opacity-100"
         aria-label="Dismiss"
       >
         ×
       </button>
+    </div>
+  );
+}
+
+const CONFETTI_COLORS = [
+  "#e8a23d", // accent amber
+  "#b3402b", // rust
+  "#5c7a4f", // olive
+  "#7a5c8a", // plum
+  "#5f7d8a", // slate blue
+];
+
+/**
+ * A brief CSS-only confetti burst for celebratory moments (approvals,
+ * returns). Fully client-rendered, no external animation library.
+ */
+export function Celebration({ onDone }: { onDone: () => void }) {
+  const pieces = React.useMemo(
+    () =>
+      Array.from({ length: 24 }, (_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        delay: Math.random() * 0.15,
+        duration: 0.9 + Math.random() * 0.6,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        rotate: Math.random() * 360,
+      })),
+    []
+  );
+
+  React.useEffect(() => {
+    const timer = setTimeout(onDone, 1400);
+    return () => clearTimeout(timer);
+  }, [onDone]);
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[70] overflow-hidden" aria-hidden="true">
+      {pieces.map((p) => (
+        <span
+          key={p.id}
+          className="absolute top-0 w-2 h-3 rounded-sm confetti-piece"
+          style={{
+            left: `${p.left}%`,
+            backgroundColor: p.color,
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
+            transform: `rotate(${p.rotate}deg)`,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -221,16 +315,25 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onCancel]);
+
   return (
     <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[55]"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-[55]"
       role="alertdialog"
       aria-modal="true"
       aria-label={title}
     >
-      <div className="bg-gray-950 border border-gray-800 rounded-2xl p-5 max-w-sm w-full">
-        <h4 className="font-semibold text-lg mb-2">{title}</h4>
-        <p className="text-gray-400 text-sm mb-4">{message}</p>
+      <div className="relative bg-surface-raised border border-border rounded-xl p-5 max-w-sm w-full shadow-[0_12px_32px_hsl(var(--shadow-color)/0.4)] overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-[3px] hazard-edge" />
+        <h4 className="font-display font-bold text-lg mb-2 pt-1 text-ink">{title}</h4>
+        <p className="text-ink-muted text-sm mb-4">{message}</p>
         <div className="flex gap-2 justify-end">
           <Button kind="secondary" onClick={onCancel}>
             {cancelLabel}
@@ -270,14 +373,14 @@ export function ItemPhoto({
       <img
         src={src}
         alt={alt}
-        className={`${sizeMap[size]} object-cover rounded-md border border-gray-700 shrink-0`}
+        className={`${sizeMap[size]} object-cover rounded-md border border-border shrink-0`}
       />
     );
   }
 
   return (
     <div
-      className={`${sizeMap[size]} flex items-center justify-center bg-gray-800 ${textMap[size]} text-gray-400 rounded-md shrink-0`}
+      className={`${sizeMap[size]} flex items-center justify-center bg-surface-sunken border border-border ${textMap[size]} text-ink-faint rounded-md shrink-0 font-tag uppercase`}
     >
       No Photo
     </div>
@@ -295,13 +398,11 @@ export function FormField({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-300 mb-1">
+      <label className="block text-xs font-semibold uppercase tracking-wide text-ink-muted mb-1.5">
         {label}
       </label>
       {children}
-      {error && (
-        <p className="text-red-400 text-xs mt-1">{error}</p>
-      )}
+      {error && <p className="text-bad text-xs mt-1">{error}</p>}
     </div>
   );
 }

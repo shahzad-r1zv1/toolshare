@@ -12,10 +12,11 @@ import {
   updateDoc,
   where,
   arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { load, save, seed, uid } from "./helpers";
-import type { State, Item, Request, Loan, Friend } from "./types";
+import type { State, Item, Request, Loan, Friend, WishlistEntry } from "./types";
 
 /**
  * Firestore data model: one document per circle in the `circles` collection.
@@ -31,6 +32,7 @@ export type CircleDoc = {
   items: Item[];
   requests: Request[];
   loans: Loan[];
+  wishlist: WishlistEntry[];
   updatedAt: number;
 };
 
@@ -75,6 +77,7 @@ export function assembleState(
   const items: Item[] = [];
   const requests: Request[] = [];
   const loans: Loan[] = [];
+  const wishlist: WishlistEntry[] = [];
   for (const id of circleIds) {
     const d = docs[id];
     for (const memberId of d.memberIds) {
@@ -88,6 +91,7 @@ export function assembleState(
     items.push(...(d.items || []));
     requests.push(...(d.requests || []));
     loans.push(...(d.loans || []));
+    wishlist.push(...(d.wishlist || []));
   }
   return {
     user: { id: uid_, name, circles: circleIds },
@@ -101,6 +105,7 @@ export function assembleState(
     items: items.sort((a, b) => b.createdAt - a.createdAt),
     requests: requests.sort((a, b) => b.createdAt - a.createdAt),
     loans,
+    wishlist: wishlist.sort((a, b) => b.createdAt - a.createdAt),
   };
 }
 
@@ -134,6 +139,7 @@ export function splitState(
       items: [],
       requests: [],
       loans: [],
+      wishlist: [],
       updatedAt: Date.now(),
     };
     // Keep profile names for current members; the user's own profile is
@@ -158,6 +164,9 @@ export function splitState(
     const home = itemCircle.get(l.itemId) || prevHome(l.id, "loans");
     if (home && result[home]) result[home].loans.push(l);
   }
+  for (const w of state.wishlist) {
+    result[w.circleId]?.wishlist.push(w);
+  }
   return result;
 }
 
@@ -172,6 +181,8 @@ export interface AppStore {
   syncError: string | null;
   createCircle: (name: string) => Promise<void>;
   joinCircle: (code: string) => Promise<void>;
+  /** Leave a circle: fails if the user has an item on active loan or a loan out on someone else's item within it. */
+  leaveCircle: (circleId: string) => Promise<void>;
 }
 
 export function useAppState(user: FirebaseUser | null): AppStore {
@@ -296,6 +307,7 @@ export function useAppState(user: FirebaseUser | null): AppStore {
         items: [],
         requests: [],
         loans: [],
+        wishlist: [],
         updatedAt: Date.now(),
       };
       await setDoc(doc(db!, "circles", id), clean(circleDoc));
@@ -332,6 +344,67 @@ export function useAppState(user: FirebaseUser | null): AppStore {
     [mode, userId, userName]
   );
 
+  const leaveCircle = useCallback(
+    async (circleId: string) => {
+      const current = mode === "cloud" ? cloudStateRef.current : localState;
+      // In local mode `state.user.id` (from seed/load) is the real identity;
+      // the module-level `userId` constant only applies to the cloud path.
+      const me = current.user.id;
+      const circle = current.circles.find((c) => c.id === circleId);
+      if (!circle) throw new Error("Circle not found.");
+
+      const circleItemIds = new Set(
+        current.items.filter((i) => i.circleId === circleId).map((i) => i.id)
+      );
+      const hasBlockingLoan = current.loans.some(
+        (l) =>
+          l.status === "ACTIVE" &&
+          circleItemIds.has(l.itemId) &&
+          (l.borrowerId === me ||
+            current.items.find((i) => i.id === l.itemId)?.ownerId === me)
+      );
+      if (hasBlockingLoan) {
+        throw new Error(
+          "You have an active loan in this circle (as owner or borrower). Return or complete it before leaving."
+        );
+      }
+
+      if (mode === "local") {
+        setLocalState((s) => ({
+          ...s,
+          circles: s.circles.filter((c) => c.id !== circleId),
+          items: s.items.filter((i) => i.circleId !== circleId),
+          requests: s.requests.filter(
+            (r) => !circleItemIds.has(r.itemId)
+          ),
+          wishlist: s.wishlist.filter((w) => w.circleId !== circleId),
+          user: { ...s.user, circles: s.user.circles.filter((id) => id !== circleId) },
+        }));
+        return;
+      }
+
+      // A departing member can't keep owning items in a circle they're no
+      // longer part of, so their items (and any requests on them) are
+      // pruned in the same write that removes them from memberIds.
+      const circleDoc = docsRef.current[circleId];
+      const remainingItems = (circleDoc?.items || []).filter(
+        (i) => i.ownerId !== userId
+      );
+      const remainingItemIds = new Set(remainingItems.map((i) => i.id));
+      const remainingRequests = (circleDoc?.requests || []).filter((r) =>
+        remainingItemIds.has(r.itemId)
+      );
+
+      await updateDoc(doc(db!, "circles", circleId), {
+        memberIds: arrayRemove(userId),
+        items: remainingItems,
+        requests: remainingRequests,
+        updatedAt: Date.now(),
+      });
+    },
+    [mode, userId, localState]
+  );
+
   return {
     state: mode === "cloud" ? cloudState : localState,
     setState: mode === "cloud" ? setCloudState : setLocalState,
@@ -340,5 +413,6 @@ export function useAppState(user: FirebaseUser | null): AppStore {
     syncError,
     createCircle,
     joinCircle,
+    leaveCircle,
   };
 }

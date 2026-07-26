@@ -11,10 +11,11 @@ import { MyCircle } from "@/components/MyCircle";
 import { MyItems } from "@/components/MyItems";
 import { Requests } from "@/components/Requests";
 import { LoanHistory } from "@/components/LoanHistory";
+import { Wishlist } from "@/components/Wishlist";
 import { DetailsModal } from "@/components/DetailsModal";
-import { CircleForms, CircleManagerModal } from "@/components/CircleManager";
+import { CircleForms, CircleManagerModal, InviteModal } from "@/components/CircleManager";
 
-type Tab = "circle" | "items" | "reqs" | "history";
+type Tab = "circle" | "items" | "reqs" | "wishlist" | "history";
 
 const TAB_CONFIG: { key: Tab; label: string; icon: React.ReactNode }[] = [
   {
@@ -45,6 +46,15 @@ const TAB_CONFIG: { key: Tab; label: string; icon: React.ReactNode }[] = [
     ),
   },
   {
+    key: "wishlist",
+    label: "Wishlist",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+      </svg>
+    ),
+  },
+  {
     key: "history",
     label: "History",
     icon: (
@@ -58,7 +68,7 @@ const TAB_CONFIG: { key: Tab; label: string; icon: React.ReactNode }[] = [
 export default function Page() {
   const { user, loading, error: authError, signOut } = useAuth();
   const router = useRouter();
-  const { state, setState, ready, mode, syncError, createCircle, joinCircle } =
+  const { state, setState, ready, mode, syncError, createCircle, joinCircle, leaveCircle } =
     useAppState(user);
 
   useEffect(() => {
@@ -73,6 +83,8 @@ export default function Page() {
   const [filter, setFilter] = useState("");
   const [detailsFor, setDetailsFor] = useState<Item | null>(null);
   const [circlesOpen, setCirclesOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [offlineBannerDismissed, setOfflineBannerDismissed] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "info";
@@ -154,15 +166,18 @@ export default function Page() {
   const hasCircles = state.circles.length > 0;
 
   return (
-    <div className="min-h-screen bg-black text-gray-100">
+    <div className="min-h-screen bg-bg text-ink">
       {/* Header */}
-      <header className="p-4 border-b border-gray-800 bg-gray-900 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <header className="relative bg-surface sticky top-0 z-10 shadow-[0_1px_0_hsl(var(--shadow-color)/0.3)]">
+        <div className="absolute top-0 left-0 right-0 h-[3px] hazard-edge" />
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 pt-[19px]">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-xl font-semibold">ToolShare</h1>
+            <h1 className="text-xl font-display font-extrabold tracking-tight text-ink">
+              Tool<span className="text-accent">Share</span>
+            </h1>
             {hasCircles && (
               <select
-                className="bg-gray-800 text-sm rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="bg-surface-sunken border border-border text-sm rounded-lg px-2 py-1 text-ink focus:outline-none focus:ring-1 focus:ring-accent"
                 value={activeCircleId}
                 onChange={(e) => setActiveCircleId(e.target.value)}
                 aria-label="Select circle"
@@ -176,29 +191,32 @@ export default function Page() {
             )}
             {activeCircle && (
               <button
-                onClick={copyInviteCode}
-                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                title="Click to copy the invite code"
+                onClick={() => setInviteOpen(true)}
+                className="text-xs text-ink-faint hover:text-ink-muted transition-colors"
+                title="Click to view invite code and QR"
               >
                 Code:{" "}
-                <span className="font-mono text-gray-400">
+                <span className="font-tag text-ink-muted">
                   {activeCircle.inviteCode}
                 </span>
               </button>
             )}
             <button
               onClick={() => setCirclesOpen(true)}
-              className="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
+              className="px-2 py-1 text-xs font-medium bg-surface-sunken hover:bg-surface-raised border border-border text-ink-muted hover:text-ink rounded-lg transition-colors"
               aria-label="Manage circles"
             >
               + Circles
             </button>
             {mode === "local" && (
               <span
-                className="text-[10px] uppercase tracking-wide bg-yellow-900/40 text-yellow-400 px-2 py-0.5 rounded-full"
-                title="Firebase is not configured; data stays on this device only."
+                className="flex items-center gap-1 text-[10px] font-tag uppercase bg-warn-soft text-warn border border-warn/50 px-2 py-0.5 rounded-full tag-pulse"
+                title="Firebase is not configured; data stays on this device only and can't be shared with others."
               >
-                Offline demo
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+                Offline demo — not shared
               </span>
             )}
           </div>
@@ -208,16 +226,16 @@ export default function Page() {
               <img
                 src={user.photoURL}
                 alt={user.displayName || "User"}
-                className="w-8 h-8 rounded-full"
+                className="w-8 h-8 rounded-full border border-border"
                 referrerPolicy="no-referrer"
               />
             )}
-            <span className="text-sm text-gray-300 hidden sm:inline">
+            <span className="text-sm text-ink-muted hidden sm:inline">
               {user.displayName || user.email}
             </span>
             <button
               onClick={signOut}
-              className="px-3 py-1 text-sm bg-gray-800 hover:bg-gray-700 text-gray-100 rounded-2xl transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              className="px-3 py-1.5 text-sm font-medium bg-surface-sunken hover:bg-surface-raised border border-border text-ink rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
               aria-label="Sign out"
             >
               Sign Out
@@ -227,19 +245,40 @@ export default function Page() {
       </header>
 
       {(authError || syncError) && (
-        <div className="bg-red-900/30 border-b border-red-800 px-4 py-3 text-center">
-          <p className="text-sm text-red-300">{authError || syncError}</p>
+        <div className="bg-bad-soft border-b border-bad/40 px-4 py-3 text-center">
+          <p className="text-sm text-bad">{authError || syncError}</p>
+        </div>
+      )}
+
+      {mode === "local" && !offlineBannerDismissed && (
+        <div className="bg-warn-soft border-b border-warn/40 px-4 py-3">
+          <div className="max-w-5xl mx-auto flex items-start sm:items-center justify-between gap-3">
+            <p className="text-sm text-ink">
+              <b className="text-warn">Offline demo mode.</b> Firebase isn&apos;t configured, so
+              everything you add here stays on this device only — nothing is
+              shared with your circle, and you can&apos;t join circles
+              created by others.
+            </p>
+            <button
+              onClick={() => setOfflineBannerDismissed(true)}
+              className="shrink-0 text-warn hover:brightness-110 text-sm px-2 py-1 font-medium"
+              aria-label="Dismiss"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
       {!hasCircles ? (
         /* First-run: no circles yet — create or join one. */
         <main className="p-4 max-w-md mx-auto mt-8">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-1">
+          <div className="relative bg-surface border border-border rounded-xl p-6 overflow-hidden shadow-[0_1px_2px_hsl(var(--shadow-color)/0.25)]">
+            <div className="absolute top-0 left-0 right-0 h-[3px] hazard-edge" />
+            <h2 className="text-lg font-display font-bold mb-1 pt-1 text-ink">
               Welcome{state.user.name ? `, ${state.user.name}` : ""}! 👋
             </h2>
-            <p className="text-sm text-gray-400 mb-5">
+            <p className="text-sm text-ink-muted mb-5">
               ToolShare works in circles — small trusted groups that share
               tools with each other. Create your first circle, or join a
               friend&apos;s with their invite code.
@@ -258,7 +297,7 @@ export default function Page() {
           <div className="flex gap-2 mb-4">
             <div className="relative flex-1">
               <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-faint"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -275,12 +314,12 @@ export default function Page() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search tools..."
-                className="w-full pl-10 pr-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                className="w-full pl-10 pr-3 py-2 bg-surface border border-border rounded-lg text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink"
                   aria-label="Clear search"
                 >
                   ×
@@ -291,7 +330,7 @@ export default function Page() {
               aria-label="Filter by category"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+              className="px-3 py-2 bg-surface border border-border rounded-lg text-sm text-ink focus:outline-none focus:border-accent"
             >
               <option value="">All Categories</option>
               {categories.map((c) => (
@@ -303,7 +342,7 @@ export default function Page() {
           </div>
 
           {/* Tab Navigation */}
-          <nav className="flex gap-1 mb-6 border-b border-gray-800 pb-1" role="tablist">
+          <nav className="flex gap-1 mb-6 border-b border-border pb-1" role="tablist">
             {TAB_CONFIG.map(({ key, label, icon }) => {
               const isActive = tab === key;
               const badge =
@@ -314,16 +353,22 @@ export default function Page() {
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setTab(key)}
-                  className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-t-lg transition-colors ${
                     isActive
-                      ? "bg-gray-900 text-emerald-400 border-b-2 border-emerald-400"
-                      : "text-gray-400 hover:text-gray-200 hover:bg-gray-900/50"
+                      ? "bg-accent text-accent-ink"
+                      : "text-ink-muted hover:text-ink hover:bg-surface"
                   }`}
                 >
                   {icon}
                   <span className="hidden sm:inline">{label}</span>
                   {badge > 0 && (
-                    <span className="bg-emerald-600 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">
+                    <span
+                      className={`text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center font-tag ${
+                        isActive
+                          ? "bg-accent-ink/20 text-accent-ink"
+                          : "bg-accent text-accent-ink"
+                      }`}
+                    >
                       {badge}
                     </span>
                   )}
@@ -358,6 +403,14 @@ export default function Page() {
                 filter={filter}
               />
             )}
+            {tab === "wishlist" && (
+              <Wishlist
+                state={state}
+                setState={setState}
+                activeCircleId={activeCircleId}
+                search={search}
+              />
+            )}
             {tab === "history" && (
               <LoanHistory state={state} search={search} filter={filter} />
             )}
@@ -368,11 +421,23 @@ export default function Page() {
       {/* Circle management modal */}
       {circlesOpen && (
         <CircleManagerModal
+          circles={state.circles}
           createCircle={createCircle}
           joinCircle={joinCircle}
+          leaveCircle={leaveCircle}
           canJoin={mode === "cloud"}
           onClose={() => setCirclesOpen(false)}
           onDone={(message) => setToast({ message, type: "success" })}
+        />
+      )}
+
+      {/* Invite modal (QR code + code for joining this circle) */}
+      {inviteOpen && activeCircle && (
+        <InviteModal
+          circleName={activeCircle.name}
+          inviteCode={activeCircle.inviteCode}
+          onClose={() => setInviteOpen(false)}
+          onCopy={copyInviteCode}
         />
       )}
 

@@ -7,12 +7,28 @@ export const uid = () =>
 export const now = () => Date.now();
 export const DATE_FMT = (s: string) => new Date(s).toLocaleDateString();
 
-const LS_KEY = "toolshare_state_final_v9";
+const LS_KEY = "toolshare_state_final_v10";
 
 export const load = (): State | null => {
   if (typeof window === "undefined") return null;
   try {
-    return JSON.parse(localStorage.getItem(LS_KEY) || "");
+    const parsed = JSON.parse(localStorage.getItem(LS_KEY) || "");
+    if (!parsed || typeof parsed !== "object") return null;
+    // Backfill fields added after this record was first saved.
+    if (!Array.isArray(parsed.wishlist)) parsed.wishlist = [];
+    if (Array.isArray(parsed.loans)) {
+      const itemById = new Map(
+        (parsed.items || []).map((i: Item) => [i.id, i])
+      );
+      for (const loan of parsed.loans as Loan[]) {
+        if (loan.itemTitle == null) {
+          const item = itemById.get(loan.itemId) as Item | undefined;
+          loan.itemTitle = item?.title || "Deleted item";
+          loan.itemCategory = item?.category;
+        }
+      }
+    }
+    return parsed as State;
   } catch {
     return null;
   }
@@ -62,7 +78,15 @@ export const seed = (): State => {
       createdAt: now(),
     },
   ];
-  return { user, friends, circles: [circle], items, requests: [], loans: [] };
+  return {
+    user,
+    friends,
+    circles: [circle],
+    items,
+    requests: [],
+    loans: [],
+    wishlist: [],
+  };
 };
 
 // Photos are stored inline (base64) in shared circle documents, so they must
@@ -120,6 +144,28 @@ export const findOverlappingLoan = (
       l.status === "ACTIVE" &&
       datesOverlap(l.startDate, l.endDate, start, end)
   );
+
+export type DueStatus = "overdue" | "due-today" | "due-soon" | "ok";
+
+/** Days between two YYYY-MM-DD dates (b - a), ignoring time of day. */
+const daysBetween = (a: Date, b: Date): number =>
+  Math.round((b.getTime() - a.getTime()) / 86400000);
+
+/**
+ * Classify a loan's due date relative to today (D-1/D/D+1 reminder window
+ * from the PRD): "overdue" once past the due date, "due-today" on the due
+ * date, "due-soon" the day before, otherwise "ok".
+ */
+export const dueStatus = (endDate: string, today: Date = new Date()): DueStatus => {
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const due = new Date(endDate);
+  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  const diff = daysBetween(start, dueDay);
+  if (diff < 0) return "overdue";
+  if (diff === 0) return "due-today";
+  if (diff === 1) return "due-soon";
+  return "ok";
+};
 
 export const filesTo64 = async (arr: File[]): Promise<string[]> => {
   const res: string[] = [];

@@ -143,6 +143,7 @@ describe("helpers", () => {
     const activeLoan: Loan = {
       id: "loan-1",
       itemId: "item-1",
+      itemTitle: "Test Item",
       borrowerId: "alice",
       startDate: "2026-03-10",
       endDate: "2026-03-15",

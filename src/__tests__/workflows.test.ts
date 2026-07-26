@@ -54,9 +54,12 @@ function requestItem(
 function approveRequest(state: State, requestId: string): State {
   const req = state.requests.find((r) => r.id === requestId);
   if (!req) return state;
+  const item = state.items.find((i) => i.id === req.itemId);
   const loan: Loan = {
     id: uid(),
     itemId: req.itemId,
+    itemTitle: item?.title || "Deleted item",
+    itemCategory: item?.category,
     borrowerId: req.borrowerId,
     startDate: req.startDate,
     endDate: req.endDate,
