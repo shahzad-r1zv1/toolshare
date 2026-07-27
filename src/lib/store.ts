@@ -16,7 +16,19 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { load, save, seed, uid } from "./helpers";
-import type { State, Item, Request, Loan, Friend, WishlistEntry } from "./types";
+import type {
+  State,
+  Item,
+  Request,
+  Loan,
+  Friend,
+  WishlistEntry,
+  Message,
+  WaitlistEntry,
+  Consumable,
+  ConsumableClaim,
+  RoughLocation,
+} from "./types";
 
 /**
  * Firestore data model: one document per circle in the `circles` collection.
@@ -28,11 +40,15 @@ export type CircleDoc = {
   name: string;
   inviteCode: string;
   memberIds: string[];
-  memberProfiles: Record<string, { name: string }>;
+  memberProfiles: Record<string, { name: string; location?: RoughLocation }>;
   items: Item[];
   requests: Request[];
   loans: Loan[];
   wishlist: WishlistEntry[];
+  messages: Message[];
+  waitlist: WaitlistEntry[];
+  consumables: Consumable[];
+  consumableClaims: ConsumableClaim[];
   updatedAt: number;
 };
 
@@ -78,13 +94,23 @@ export function assembleState(
   const requests: Request[] = [];
   const loans: Loan[] = [];
   const wishlist: WishlistEntry[] = [];
+  const messages: Message[] = [];
+  const waitlist: WaitlistEntry[] = [];
+  const consumables: Consumable[] = [];
+  const consumableClaims: ConsumableClaim[] = [];
+  let myLocation: RoughLocation | undefined;
   for (const id of circleIds) {
     const d = docs[id];
     for (const memberId of d.memberIds) {
-      if (memberId !== uid_ && !friendMap.has(memberId)) {
+      if (memberId === uid_) {
+        myLocation = myLocation || d.memberProfiles?.[memberId]?.location;
+        continue;
+      }
+      if (!friendMap.has(memberId)) {
         friendMap.set(memberId, {
           id: memberId,
           name: d.memberProfiles?.[memberId]?.name || "Member",
+          location: d.memberProfiles?.[memberId]?.location,
         });
       }
     }
@@ -92,9 +118,13 @@ export function assembleState(
     requests.push(...(d.requests || []));
     loans.push(...(d.loans || []));
     wishlist.push(...(d.wishlist || []));
+    messages.push(...(d.messages || []));
+    waitlist.push(...(d.waitlist || []));
+    consumables.push(...(d.consumables || []));
+    consumableClaims.push(...(d.consumableClaims || []));
   }
   return {
-    user: { id: uid_, name, circles: circleIds },
+    user: { id: uid_, name, circles: circleIds, location: myLocation },
     friends: [...friendMap.values()],
     circles: circleIds.map((id) => ({
       id,
@@ -106,6 +136,10 @@ export function assembleState(
     requests: requests.sort((a, b) => b.createdAt - a.createdAt),
     loans,
     wishlist: wishlist.sort((a, b) => b.createdAt - a.createdAt),
+    messages: messages.sort((a, b) => a.createdAt - b.createdAt),
+    waitlist: waitlist.sort((a, b) => a.createdAt - b.createdAt),
+    consumables: consumables.sort((a, b) => b.createdAt - a.createdAt),
+    consumableClaims: consumableClaims.sort((a, b) => a.createdAt - b.createdAt),
   };
 }
 
@@ -121,7 +155,10 @@ export function splitState(
   const itemCircle = new Map<string, string>();
   for (const item of state.items) itemCircle.set(item.id, item.circleId);
 
-  const prevHome = (entityId: string, kind: "requests" | "loans"): string | undefined => {
+  const prevHome = (
+    entityId: string,
+    kind: "requests" | "loans" | "waitlist" | "messages" | "consumableClaims"
+  ): string | undefined => {
     for (const [circleId, d] of Object.entries(prevDocs)) {
       if ((d[kind] || []).some((e: { id: string }) => e.id === entityId)) return circleId;
     }
@@ -140,17 +177,24 @@ export function splitState(
       requests: [],
       loans: [],
       wishlist: [],
+      messages: [],
+      waitlist: [],
+      consumables: [],
+      consumableClaims: [],
       updatedAt: Date.now(),
     };
-    // Keep profile names for current members; the user's own profile is
-    // refreshed elsewhere (create/join).
+    // Keep profile names (and location) for current members; the user's own
+    // profile is refreshed elsewhere (create/join/location settings).
     for (const f of state.friends) {
       if (circle.members.includes(f.id) && !result[circle.id].memberProfiles[f.id]) {
-        result[circle.id].memberProfiles[f.id] = { name: f.name };
+        result[circle.id].memberProfiles[f.id] = { name: f.name, location: f.location };
       }
     }
     if (circle.members.includes(state.user.id) && !result[circle.id].memberProfiles[state.user.id]) {
-      result[circle.id].memberProfiles[state.user.id] = { name: state.user.name };
+      result[circle.id].memberProfiles[state.user.id] = {
+        name: state.user.name,
+        location: state.user.location,
+      };
     }
   }
   for (const item of state.items) {
@@ -166,6 +210,28 @@ export function splitState(
   }
   for (const w of state.wishlist) {
     result[w.circleId]?.wishlist.push(w);
+  }
+  for (const w of state.waitlist) {
+    const home = itemCircle.get(w.itemId) || prevHome(w.id, "waitlist");
+    if (home && result[home]) result[home].waitlist.push(w);
+  }
+  // A message's thread id is either a request id or a loan id; resolve
+  // through whichever one currently exists to find the owning item/circle.
+  const requestItemId = new Map(state.requests.map((r) => [r.id, r.itemId]));
+  const loanItemId = new Map(state.loans.map((l) => [l.id, l.itemId]));
+  for (const m of state.messages) {
+    const itemId = requestItemId.get(m.threadId) || loanItemId.get(m.threadId);
+    const home = (itemId && itemCircle.get(itemId)) || prevHome(m.id, "messages");
+    if (home && result[home]) result[home].messages.push(m);
+  }
+  for (const c of state.consumables) {
+    result[c.circleId]?.consumables.push(c);
+  }
+  const consumableCircle = new Map(state.consumables.map((c) => [c.id, c.circleId]));
+  for (const claim of state.consumableClaims) {
+    const home =
+      consumableCircle.get(claim.consumableId) || prevHome(claim.id, "consumableClaims");
+    if (home && result[home]) result[home].consumableClaims.push(claim);
   }
   return result;
 }
@@ -308,6 +374,10 @@ export function useAppState(user: FirebaseUser | null): AppStore {
         requests: [],
         loans: [],
         wishlist: [],
+        messages: [],
+        waitlist: [],
+        consumables: [],
+        consumableClaims: [],
         updatedAt: Date.now(),
       };
       await setDoc(doc(db!, "circles", id), clean(circleDoc));
@@ -369,6 +439,10 @@ export function useAppState(user: FirebaseUser | null): AppStore {
         );
       }
 
+      const circleConsumableIds = new Set(
+        current.consumables.filter((c) => c.circleId === circleId).map((c) => c.id)
+      );
+
       if (mode === "local") {
         setLocalState((s) => ({
           ...s,
@@ -378,14 +452,21 @@ export function useAppState(user: FirebaseUser | null): AppStore {
             (r) => !circleItemIds.has(r.itemId)
           ),
           wishlist: s.wishlist.filter((w) => w.circleId !== circleId),
+          waitlist: s.waitlist.filter((w) => !circleItemIds.has(w.itemId)),
+          consumables: s.consumables.filter((c) => c.circleId !== circleId),
+          consumableClaims: s.consumableClaims.filter(
+            (c) => !circleConsumableIds.has(c.consumableId)
+          ),
           user: { ...s.user, circles: s.user.circles.filter((id) => id !== circleId) },
         }));
         return;
       }
 
-      // A departing member can't keep owning items in a circle they're no
-      // longer part of, so their items (and any requests on them) are
-      // pruned in the same write that removes them from memberIds.
+      // A departing member can't keep owning items/consumables in a circle
+      // they're no longer part of, so those (and any requests/waitlist
+      // entries on them) are pruned in the same write that removes them
+      // from memberIds. Loans (and their message threads) are left
+      // untouched so loan history survives departure.
       const circleDoc = docsRef.current[circleId];
       const remainingItems = (circleDoc?.items || []).filter(
         (i) => i.ownerId !== userId
@@ -394,11 +475,24 @@ export function useAppState(user: FirebaseUser | null): AppStore {
       const remainingRequests = (circleDoc?.requests || []).filter((r) =>
         remainingItemIds.has(r.itemId)
       );
+      const remainingWaitlist = (circleDoc?.waitlist || []).filter((w) =>
+        remainingItemIds.has(w.itemId)
+      );
+      const remainingConsumables = (circleDoc?.consumables || []).filter(
+        (c) => c.ownerId !== userId
+      );
+      const remainingConsumableIds = new Set(remainingConsumables.map((c) => c.id));
+      const remainingClaims = (circleDoc?.consumableClaims || []).filter((c) =>
+        remainingConsumableIds.has(c.consumableId)
+      );
 
       await updateDoc(doc(db!, "circles", circleId), {
         memberIds: arrayRemove(userId),
         items: remainingItems,
         requests: remainingRequests,
+        waitlist: remainingWaitlist,
+        consumables: remainingConsumables,
+        consumableClaims: remainingClaims,
         updatedAt: Date.now(),
       });
     },

@@ -21,6 +21,10 @@ function circleDoc(overrides: Partial<CircleDoc> = {}): CircleDoc {
     requests: [],
     loans: [],
     wishlist: [],
+    messages: [],
+    waitlist: [],
+    consumables: [],
+    consumableClaims: [],
     updatedAt: 1,
     ...overrides,
   };
@@ -113,6 +117,10 @@ describe("splitState", () => {
       requests: [req],
       loans: [loan],
       wishlist: [],
+      messages: [],
+      waitlist: [],
+      consumables: [],
+      consumableClaims: [],
     };
     const docs = splitState(state, prevDocs);
     expect(docs.c1.items.map((i) => i.id)).toEqual(["i1"]);
@@ -141,6 +149,10 @@ describe("splitState", () => {
       requests: [],
       loans: [oldLoan],
       wishlist: [],
+      messages: [],
+      waitlist: [],
+      consumables: [],
+      consumableClaims: [],
     };
     const docs = splitState(state, prevDocs);
     expect(docs.c1.loans.map((l) => l.id)).toEqual(["l1"]);

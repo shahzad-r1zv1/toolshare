@@ -3,7 +3,7 @@
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LoadingScreen, Spinner } from "@/components/ui";
+import { LoadingScreen, Spinner, ThemeToggle } from "@/components/ui";
 
 type Mode = "signin" | "signup";
 
@@ -31,7 +31,7 @@ function GoogleIcon() {
 }
 
 const inputClass =
-  "w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent";
+  "w-full px-3 py-2 bg-surface-sunken border-2 border-border rounded-2xl text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent";
 
 export default function LoginPage() {
   const {
@@ -111,9 +111,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg text-ink flex items-center justify-center p-4">
-      <div className="relative bg-surface border border-border rounded-xl p-8 max-w-sm w-full space-y-5 overflow-hidden shadow-[0_12px_32px_hsl(var(--shadow-color)/0.3)]">
-        <div className="absolute top-0 left-0 right-0 h-[4px] hazard-edge" />
+    <div className="min-h-screen bg-bg text-ink flex items-center justify-center p-4 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      <div className="relative bg-surface border-2 border-border rounded-3xl p-8 max-w-sm w-full space-y-5 overflow-hidden shadow-[0_16px_36px_hsl(var(--shadow-color)/0.28)]">
+        <div className="absolute top-0 left-0 right-0 h-[5px] kit-edge" />
         <div className="text-center pt-1">
           <h1 className="text-2xl font-display font-extrabold tracking-tight mb-1 text-ink">
             Tool<span className="text-accent">Share</span>
@@ -124,27 +127,27 @@ export default function LoginPage() {
         </div>
 
         {globalError && (
-          <div className="bg-warn-soft border border-warn/40 rounded-lg px-4 py-3 text-sm text-warn">
+          <div className="bg-warn-soft border-2 border-warn/40 rounded-2xl px-4 py-3 text-sm text-warn">
             {globalError}
           </div>
         )}
         {error && (
-          <div className="bg-bad-soft border border-bad/40 rounded-lg px-4 py-3 text-sm text-bad">
+          <div className="bg-bad-soft border-2 border-bad/40 rounded-2xl px-4 py-3 text-sm text-bad">
             {error}
           </div>
         )}
         {notice && (
-          <div className="bg-good-soft border border-good/40 rounded-lg px-4 py-3 text-sm text-good">
+          <div className="bg-good-soft border-2 border-good/40 rounded-2xl px-4 py-3 text-sm text-good">
             {notice}
           </div>
         )}
 
         {/* Sign in / Create account toggle */}
-        <div className="grid grid-cols-2 bg-surface-sunken border border-border rounded-lg p-1 text-sm font-semibold">
+        <div className="grid grid-cols-2 bg-surface-sunken border-2 border-border rounded-full p-1 text-sm font-bold">
           <button
             type="button"
             onClick={() => switchMode("signin")}
-            className={`py-2 rounded-md transition-colors ${
+            className={`py-2 rounded-full transition-colors ${
               mode === "signin" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
             }`}
           >
@@ -153,7 +156,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => switchMode("signup")}
-            className={`py-2 rounded-md transition-colors ${
+            className={`py-2 rounded-full transition-colors ${
               mode === "signup" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
             }`}
           >
@@ -209,7 +212,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent hover:bg-accent-strong text-accent-ink font-semibold rounded-lg transition-all active:translate-y-px shadow-[0_1px_0_0_var(--accent-strong)] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-surface"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent hover:bg-accent-strong text-accent-ink font-bold rounded-2xl border-2 border-border transition-all active:translate-y-[3px] active:shadow-none shadow-[0_3px_0_0_var(--border)] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:translate-y-0 disabled:active:shadow-[0_3px_0_0_var(--border)] focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-surface"
           >
             {busy ? <Spinner size="sm" /> : mode === "signup" ? "Create Account" : "Sign In"}
           </button>
@@ -235,7 +238,7 @@ export default function LoginPage() {
         <button
           onClick={() => run(signInWithGoogle)}
           disabled={busy}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white text-gray-800 font-semibold rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-surface"
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white text-gray-800 font-bold rounded-2xl border-2 border-border hover:bg-gray-100 transition-all active:translate-y-[3px] active:shadow-none shadow-[0_3px_0_0_var(--border)] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-surface"
         >
           {busy ? <Spinner size="sm" /> : <GoogleIcon />}
           Continue with Google

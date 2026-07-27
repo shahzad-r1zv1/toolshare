@@ -1,4 +1,4 @@
-import type { State, User, Friend, Circle, Item, Loan } from "./types";
+import type { State, User, Friend, Circle, Item, Loan, RoughLocation } from "./types";
 
 export const uid = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
@@ -16,6 +16,10 @@ export const load = (): State | null => {
     if (!parsed || typeof parsed !== "object") return null;
     // Backfill fields added after this record was first saved.
     if (!Array.isArray(parsed.wishlist)) parsed.wishlist = [];
+    if (!Array.isArray(parsed.messages)) parsed.messages = [];
+    if (!Array.isArray(parsed.waitlist)) parsed.waitlist = [];
+    if (!Array.isArray(parsed.consumables)) parsed.consumables = [];
+    if (!Array.isArray(parsed.consumableClaims)) parsed.consumableClaims = [];
     if (Array.isArray(parsed.loans)) {
       const itemById = new Map(
         (parsed.items || []).map((i: Item) => [i.id, i])
@@ -86,6 +90,10 @@ export const seed = (): State => {
     requests: [],
     loans: [],
     wishlist: [],
+    messages: [],
+    waitlist: [],
+    consumables: [],
+    consumableClaims: [],
   };
 };
 
@@ -158,13 +166,104 @@ const daysBetween = (a: Date, b: Date): number =>
  */
 export const dueStatus = (endDate: string, today: Date = new Date()): DueStatus => {
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const due = new Date(endDate);
-  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  // Parse the YYYY-MM-DD parts directly rather than via `new Date(endDate)`,
+  // which treats the string as UTC midnight and can shift the due date back
+  // a full calendar day once read through local getFullYear/getMonth/getDate.
+  const [dueYear, dueMonth, dueDate] = endDate.split("-").map(Number);
+  const dueDay = new Date(dueYear, dueMonth - 1, dueDate);
   const diff = daysBetween(start, dueDay);
   if (diff < 0) return "overdue";
   if (diff === 0) return "due-today";
   if (diff === 1) return "due-soon";
   return "ok";
+};
+
+/**
+ * The active (not-yet-returned) loan on this item, regardless of the
+ * requested date range. Unlike findOverlappingLoan (a date-range check), this
+ * blocks ANY new request while a prior loan is outstanding — closing the gap
+ * where a never-returned item could still be re-booked for future dates.
+ */
+export const findOutstandingLoan = (loans: Loan[], itemId: string): Loan | undefined =>
+  loans.find((l) => l.itemId === itemId && l.status === "ACTIVE");
+
+/** True if a loan was returned after its due date (needs returnedAt to be set). */
+export const wasReturnedLate = (loan: Loan): boolean => {
+  if (loan.status !== "RETURNED" || !loan.returnedAt) return false;
+  const [y, m, d] = loan.endDate.split("-").map(Number);
+  const dueEndOfDay = new Date(y, m - 1, d, 23, 59, 59, 999).getTime();
+  return loan.returnedAt > dueEndOfDay;
+};
+
+/**
+ * Share of a member's completed loans (as borrower) returned on or before
+ * their due date. Returns null when the member has no returned-loan history
+ * yet (too new to score). Loans returned before `returnedAt` was introduced
+ * count as on-time, since we have no record of their actual return time.
+ */
+export const trustScore = (
+  loans: Loan[],
+  memberId: string
+): { onTimeRate: number; completedCount: number } | null => {
+  const completed = loans.filter(
+    (l) => l.borrowerId === memberId && l.status === "RETURNED"
+  );
+  if (completed.length === 0) return null;
+  const onTime = completed.filter((l) => !wasReturnedLate(l)).length;
+  return {
+    onTimeRate: Math.round((onTime / completed.length) * 100),
+    completedCount: completed.length,
+  };
+};
+
+const EARTH_RADIUS_MI = 3958.8;
+
+/** Great-circle distance between two rough locations, in miles. */
+export const distanceMiles = (a: RoughLocation, b: RoughLocation): number => {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return EARTH_RADIUS_MI * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+};
+
+/** "~2 mi away" style label, or undefined if either location is missing. */
+export const distanceLabel = (
+  from: RoughLocation | undefined,
+  to: RoughLocation | undefined
+): string | undefined => {
+  if (!from || !to) return undefined;
+  const miles = distanceMiles(from, to);
+  if (miles < 0.1) return "nearby";
+  return `~${miles < 10 ? miles.toFixed(1) : Math.round(miles)} mi away`;
+};
+
+/**
+ * Coarsen a precise coordinate to roughly a few hundred meters of
+ * resolution, so a member's location reads as "nearby" rather than
+ * pinpointing their address.
+ */
+export const coarsenLocation = (loc: RoughLocation): RoughLocation => ({
+  lat: Math.round(loc.lat * 100) / 100,
+  lng: Math.round(loc.lng * 100) / 100,
+});
+
+/** Cost for a loan window at the item's rate: amount as-is for "flat", or amount × nights for "day". */
+export const rentalCost = (
+  rate: { amount: number; unit: "day" | "flat" },
+  startDate: string,
+  endDate: string
+): number => {
+  if (rate.unit === "flat") return rate.amount;
+  const [sy, sm, sd] = startDate.split("-").map(Number);
+  const [ey, em, ed] = endDate.split("-").map(Number);
+  const start = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
+  const nights = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+  return rate.amount * nights;
 };
 
 export const filesTo64 = async (arr: File[]): Promise<string[]> => {

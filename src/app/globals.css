@@ -1,104 +1,125 @@
 @import "tailwindcss";
 
 /*
-  "Workshop" design system — warm, tactile, tool-shed identity instead of
-  a generic dark-SaaS palette. Tokens are theme-agnostic; only their values
-  change between light/dark blocks below. Components should reference these
-  custom properties (or the @theme-mapped Tailwind classes), never hardcode
-  hex values.
+  "Community Kit" design system — coral, teal, and sunshine on a warm paper
+  ground, thick borders, and pressable buttons. Tokens are theme-agnostic;
+  only their values change between light/dark blocks below. Components
+  should reference these custom properties (or the @theme-mapped Tailwind
+  classes), never hardcode hex values.
 */
 :root {
-  --bg: #f7f3ec;
+  --bg: #fdf6ea;
   --surface: #ffffff;
   --surface-raised: #ffffff;
-  --surface-sunken: #efe8db;
-  --border: #e2d8c4;
-  --border-strong: #cbbc9e;
-  --ink: #231d16;
-  --ink-muted: #6b5f4d;
-  --ink-faint: #9c8f78;
-  --accent: #c67f1f;
-  --accent-strong: #a8690f;
-  --accent-ink: #fffaf1;
-  --accent-soft: #f3e2c4;
-  --good: #3f7d55;
-  --good-soft: #dcecdf;
-  --warn: #c67f1f;
-  --warn-soft: #f3e2c4;
-  --bad: #b3402b;
-  --bad-soft: #f6ddd6;
-  --shadow-color: 30 20% 20%;
+  --surface-sunken: #fbeedb;
+  --border: #2c2620;
+  --border-strong: #2c2620;
+  --ink: #2c2620;
+  --ink-muted: #8a7d6a;
+  --ink-faint: #b3a68f;
+  --accent: #ff5a42;
+  --accent-strong: #e0402a;
+  --accent-ink: #fffaf4;
+  --accent-soft: #ffe3dc;
+  --teal: #0ea99a;
+  --teal-strong: #0c8a7d;
+  --teal-ink: #fffaf4;
+  --teal-soft: #d9f0ec;
+  --good: #0ea99a;
+  --good-soft: #d9f0ec;
+  --warn: #d99a1f;
+  --warn-soft: #fdedc7;
+  --bad: #e0402a;
+  --bad-soft: #ffe3dc;
+  --shadow-color: 30 25% 12%;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+  --press-depth: 3px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #17130f;
-    --surface: #221c15;
-    --surface-raised: #2c241b;
-    --surface-sunken: #120e0b;
-    --border: #3a2f22;
-    --border-strong: #4d3f2c;
-    --ink: #f2e9da;
-    --ink-muted: #ab9a80;
-    --ink-faint: #7a6c56;
-    --accent: #e8a23d;
-    --accent-strong: #f2b660;
-    --accent-ink: #17130f;
-    --accent-soft: #3d2f19;
-    --good: #6fae83;
-    --good-soft: #1e3324;
-    --warn: #e8a23d;
-    --warn-soft: #3d2f19;
-    --bad: #e06f52;
-    --bad-soft: #3a2018;
-    --shadow-color: 20 40% 3%;
+    --bg: #14181d;
+    --surface: #1c2228;
+    --surface-raised: #242b32;
+    --surface-sunken: #0f1317;
+    --border: #f3ece0;
+    --border-strong: #f3ece0;
+    --ink: #f3ece0;
+    --ink-muted: #a6b0b8;
+    --ink-faint: #6b767e;
+    --accent: #ff7a5c;
+    --accent-strong: #ff9578;
+    --accent-ink: #22140d;
+    --accent-soft: #47251a;
+    --teal: #29d6c2;
+    --teal-strong: #5ce8d8;
+    --teal-ink: #06231f;
+    --teal-soft: #10393a;
+    --good: #29d6c2;
+    --good-soft: #10393a;
+    --warn: #f5bf3e;
+    --warn-soft: #423415;
+    --bad: #ff6259;
+    --bad-soft: #401d1c;
+    --shadow-color: 210 45% 2%;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #17130f;
-  --surface: #221c15;
-  --surface-raised: #2c241b;
-  --surface-sunken: #120e0b;
-  --border: #3a2f22;
-  --border-strong: #4d3f2c;
-  --ink: #f2e9da;
-  --ink-muted: #ab9a80;
-  --ink-faint: #7a6c56;
-  --accent: #e8a23d;
-  --accent-strong: #f2b660;
-  --accent-ink: #17130f;
-  --accent-soft: #3d2f19;
-  --good: #6fae83;
-  --good-soft: #1e3324;
-  --warn: #e8a23d;
-  --warn-soft: #3d2f19;
-  --bad: #e06f52;
-  --bad-soft: #3a2018;
-  --shadow-color: 20 40% 3%;
+  --bg: #14181d;
+  --surface: #1c2228;
+  --surface-raised: #242b32;
+  --surface-sunken: #0f1317;
+  --border: #f3ece0;
+  --border-strong: #f3ece0;
+  --ink: #f3ece0;
+  --ink-muted: #a6b0b8;
+  --ink-faint: #6b767e;
+  --accent: #ff7a5c;
+  --accent-strong: #ff9578;
+  --accent-ink: #22140d;
+  --accent-soft: #47251a;
+  --teal: #29d6c2;
+  --teal-strong: #5ce8d8;
+  --teal-ink: #06231f;
+  --teal-soft: #10393a;
+  --good: #29d6c2;
+  --good-soft: #10393a;
+  --warn: #f5bf3e;
+  --warn-soft: #423415;
+  --bad: #ff6259;
+  --bad-soft: #401d1c;
+  --shadow-color: 210 45% 2%;
 }
 
 :root[data-theme="light"] {
-  --bg: #f7f3ec;
+  --bg: #fdf6ea;
   --surface: #ffffff;
   --surface-raised: #ffffff;
-  --surface-sunken: #efe8db;
-  --border: #e2d8c4;
-  --border-strong: #cbbc9e;
-  --ink: #231d16;
-  --ink-muted: #6b5f4d;
-  --ink-faint: #9c8f78;
-  --accent: #c67f1f;
-  --accent-strong: #a8690f;
-  --accent-ink: #fffaf1;
-  --accent-soft: #f3e2c4;
-  --good: #3f7d55;
-  --good-soft: #dcecdf;
-  --warn: #c67f1f;
-  --warn-soft: #f3e2c4;
-  --bad: #b3402b;
-  --bad-soft: #f6ddd6;
-  --shadow-color: 30 20% 20%;
+  --surface-sunken: #fbeedb;
+  --border: #2c2620;
+  --border-strong: #2c2620;
+  --ink: #2c2620;
+  --ink-muted: #8a7d6a;
+  --ink-faint: #b3a68f;
+  --accent: #ff5a42;
+  --accent-strong: #e0402a;
+  --accent-ink: #fffaf4;
+  --accent-soft: #ffe3dc;
+  --teal: #0ea99a;
+  --teal-strong: #0c8a7d;
+  --teal-ink: #fffaf4;
+  --teal-soft: #d9f0ec;
+  --good: #1c9c8e;
+  --good-soft: #d9f0ec;
+  --warn: #d99a1f;
+  --warn-soft: #fdedc7;
+  --bad: #e04f3b;
+  --bad-soft: #ffe3dc;
+  --shadow-color: 30 25% 12%;
 }
 
 @theme inline {
@@ -115,6 +136,10 @@
   --color-accent-strong: var(--accent-strong);
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
+  --color-teal: var(--teal);
+  --color-teal-strong: var(--teal-strong);
+  --color-teal-ink: var(--teal-ink);
+  --color-teal-soft: var(--teal-soft);
   --color-good: var(--good);
   --color-good-soft: var(--good-soft);
   --color-warn: var(--warn);
@@ -127,7 +152,7 @@
 }
 
 :root {
-  --font-stack-display: "Archivo Narrow", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --font-stack-display: "Fredoka", "Baloo 2", "Arial Rounded MT Bold", sans-serif;
   --font-stack-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   --font-stack-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
@@ -144,12 +169,12 @@ body {
   font-feature-settings: "tnum" 1;
 }
 
-/* Stenciled, slightly condensed display type for headings and labels —
-   the "equipment tag" register that carries the workshop identity. */
+/* Rounded, confident display type for headings and labels — the "community
+   bulletin board" register that carries the Community Kit identity. */
 .font-display {
   font-family: var(--font-stack-display);
-  font-stretch: 90%;
-  letter-spacing: 0.01em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .font-tag {
@@ -207,15 +232,8 @@ body {
   }
 }
 
-/* Hazard-stripe accent used sparingly as a signature texture (header edge,
-   active-tab underline) — never as a full background. */
-.hazard-edge {
-  background: repeating-linear-gradient(
-    -45deg,
-    var(--accent) 0px,
-    var(--accent) 8px,
-    var(--accent-ink) 8px,
-    var(--accent-ink) 16px
-  );
-  opacity: 0.9;
+/* Two-tone accent edge (coral into teal) used sparingly as a signature
+   texture on headers, modals, and banners — never as a full background. */
+.kit-edge {
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent) 55%, var(--teal) 100%);
 }

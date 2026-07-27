@@ -127,7 +127,7 @@ export function Wishlist({
                 if (error) setError("");
               }}
               placeholder="e.g., Pressure washer"
-              className="w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent"
+              className="w-full px-3 py-2 bg-surface-sunken border-2 border-border rounded-2xl text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent"
               autoFocus
             />
           </FormField>
@@ -137,7 +137,7 @@ export function Wishlist({
               onChange={(e) => setNote(e.target.value)}
               placeholder="When you need it, what for, etc."
               rows={2}
-              className="w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent resize-none"
+              className="w-full px-3 py-2 bg-surface-sunken border-2 border-border rounded-2xl text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent resize-none"
             />
           </FormField>
           <div className="flex gap-2 pt-1">

@@ -15,7 +15,7 @@ import { uid, now, filesTo64 } from "@/lib/helpers";
 import type { State, Item } from "@/lib/types";
 
 const inputClass =
-  "w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent";
+  "w-full px-3 py-2 bg-surface-sunken border-2 border-border rounded-2xl text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent";
 
 const STARTER_CATEGORIES = [
   "Power Tools",
@@ -38,7 +38,10 @@ export function MyItems({
   activeCircleId: string;
 }) {
   const myItems = state.items.filter(
-    (i) => i.ownerId === state.user.id && i.circleId === activeCircleId
+    (i) => i.ownerId === state.user.id && i.circleId === activeCircleId && !i.archived
+  );
+  const myArchivedItems = state.items.filter(
+    (i) => i.ownerId === state.user.id && i.circleId === activeCircleId && i.archived
   );
   const circleCategories = Array.from(
     new Set(
@@ -59,6 +62,8 @@ export function MyItems({
   const [rv, setRv] = useState("");
   const [avail, setAvail] = useState("");
   const [category, setCategory] = useState("");
+  const [rateAmount, setRateAmount] = useState("");
+  const [rateUnit, setRateUnit] = useState<"day" | "flat">("day");
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -73,6 +78,8 @@ export function MyItems({
     setAvail("");
     setCategory("");
     setFiles([]);
+    setRateAmount("");
+    setRateUnit("day");
     setErrors({});
     setOpen(true);
   };
@@ -85,6 +92,8 @@ export function MyItems({
     setAvail(item.avail || "");
     setCategory(item.category || "");
     setFiles([]);
+    setRateAmount(item.rate ? String(item.rate.amount) : "");
+    setRateUnit(item.rate?.unit || "day");
     setErrors({});
     setOpen(true);
   };
@@ -94,6 +103,8 @@ export function MyItems({
     if (!title.trim()) newErrors.title = "Title is required";
     if (rv && (isNaN(Number(rv)) || Number(rv) < 0))
       newErrors.rv = "Must be a positive number";
+    if (rateAmount && (isNaN(Number(rateAmount)) || Number(rateAmount) <= 0))
+      newErrors.rateAmount = "Must be a positive number";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -104,6 +115,9 @@ export function MyItems({
     try {
       let photos: string[] = editing ? editing.photos : [];
       if (files.length > 0) photos = await filesTo64(files.slice(0, 3));
+      const rate = rateAmount
+        ? { amount: Number(rateAmount), unit: rateUnit }
+        : undefined;
       if (editing) {
         const updated: Item = {
           ...editing,
@@ -113,6 +127,7 @@ export function MyItems({
           avail: avail.trim() || undefined,
           category: category.trim() || undefined,
           photos,
+          rate,
         };
         setState((s) => ({
           ...s,
@@ -130,6 +145,7 @@ export function MyItems({
           avail: avail.trim() || undefined,
           category: category.trim() || undefined,
           photos,
+          rate,
           createdAt: now(),
         };
         setState((s) => ({ ...s, items: [newItem, ...s.items] }));
@@ -149,11 +165,36 @@ export function MyItems({
         ...s,
         items: s.items.filter((i) => i.id !== editing.id),
         requests: s.requests.filter((r) => r.itemId !== editing.id),
+        waitlist: s.waitlist.filter((w) => w.itemId !== editing.id),
       }));
       setToast({ message: `"${editing.title}" deleted`, type: "success" });
       setOpen(false);
       setConfirmDelete(false);
     }
+  };
+
+  const archiveItem = () => {
+    if (!editing) return;
+    setState((s) => ({
+      ...s,
+      items: s.items.map((i) => (i.id === editing.id ? { ...i, archived: true } : i)),
+      // Archiving retires the tool from circulation, so pending asks for it
+      // and its waitlist no longer make sense — loan history is untouched.
+      requests: s.requests.filter(
+        (r) => r.itemId !== editing.id || r.status !== "PENDING"
+      ),
+      waitlist: s.waitlist.filter((w) => w.itemId !== editing.id),
+    }));
+    setToast({ message: `"${editing.title}" archived`, type: "success" });
+    setOpen(false);
+  };
+
+  const unarchiveItem = (item: Item) => {
+    setState((s) => ({
+      ...s,
+      items: s.items.map((i) => (i.id === item.id ? { ...i, archived: false } : i)),
+    }));
+    setToast({ message: `"${item.title}" is shared again`, type: "success" });
   };
 
   return (
@@ -196,6 +237,12 @@ export function MyItems({
                     RV: ${item.rv}
                   </div>
                 )}
+                {item.rate && (
+                  <div className="text-xs text-teal font-tag">
+                    ${item.rate.amount}
+                    {item.rate.unit === "day" ? "/day" : " flat"}
+                  </div>
+                )}
               </div>
             </div>
             <Button kind="secondary" onClick={() => openEdit(item)}>
@@ -204,6 +251,34 @@ export function MyItems({
           </div>
         </Card>
       ))}
+
+      {myArchivedItems.length > 0 && (
+        <div className="pt-2">
+          <h4 className="text-xs font-bold uppercase tracking-wide text-ink-faint mb-2">
+            Archived ({myArchivedItems.length})
+          </h4>
+          <div className="space-y-3">
+            {myArchivedItems.map((item) => (
+              <Card key={item.id}>
+                <div className="flex justify-between items-center opacity-70">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <ItemPhoto src={item.photos[0]} alt={item.title} />
+                    <div className="min-w-0">
+                      <div className="font-medium truncate text-ink">{item.title}</div>
+                      {item.category && (
+                        <div className="text-xs text-ink-muted">{item.category}</div>
+                      )}
+                    </div>
+                  </div>
+                  <Button kind="secondary" onClick={() => unarchiveItem(item)}>
+                    Unarchive
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {open && (
         <Modal
@@ -235,10 +310,10 @@ export function MyItems({
                   key={c}
                   type="button"
                   onClick={() => setCategory(c)}
-                  className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${
+                  className={`px-2.5 py-1 text-xs font-bold rounded-full border-2 transition-colors ${
                     category === c
-                      ? "bg-accent border-accent text-accent-ink"
-                      : "bg-surface-sunken border-border text-ink-muted hover:border-border-strong hover:text-ink"
+                      ? "bg-accent border-border text-accent-ink"
+                      : "bg-surface-sunken border-border text-ink-muted hover:text-ink"
                   }`}
                 >
                   {c}
@@ -278,19 +353,55 @@ export function MyItems({
               />
             </FormField>
           </div>
+          <FormField label="Rental Rate (optional)" error={errors.rateAmount}>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={rateAmount}
+                onChange={(e) => {
+                  setRateAmount(e.target.value);
+                  if (errors.rateAmount) setErrors((prev) => ({ ...prev, rateAmount: "" }));
+                }}
+                placeholder="0.00"
+                className={inputClass}
+              />
+              <select
+                value={rateUnit}
+                onChange={(e) => setRateUnit(e.target.value as "day" | "flat")}
+                className={inputClass}
+              >
+                <option value="day">per day</option>
+                <option value="flat">flat fee</option>
+              </select>
+            </div>
+            <p className="text-xs text-ink-faint mt-1">
+              Tracking only — settle up with the borrower yourselves; the app just shows the total.
+            </p>
+          </FormField>
           <FormField label="Photos (up to 3)">
             <input
               multiple
               type="file"
               accept="image/*"
               onChange={(e) => setFiles(Array.from(e.target.files || []))}
-              className="text-sm text-ink-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface-sunken file:px-3 file:py-2 file:text-sm file:text-ink file:font-medium hover:file:bg-surface-raised"
+              className="text-sm text-ink-muted file:mr-3 file:rounded-full file:border-0 file:bg-surface-sunken file:px-3 file:py-2 file:text-sm file:text-ink file:font-bold hover:file:bg-surface-raised"
             />
           </FormField>
-          <div className="flex gap-2 pt-1">
+          <div className="flex gap-2 pt-1 flex-wrap">
             <Button onClick={saveItem} disabled={saving}>
               {saving ? "Saving…" : editing ? "Update" : "Save"}
             </Button>
+            {editing && (
+              <Button
+                kind="secondary"
+                disabled={hasActiveLoan(editing.id)}
+                onClick={archiveItem}
+              >
+                {hasActiveLoan(editing.id) ? "On loan — can't archive" : "Archive"}
+              </Button>
+            )}
             {editing && (
               <Button
                 kind="danger"

@@ -14,10 +14,14 @@ export function InviteQRCode({ value, size = 160 }: { value: string; size?: numb
   useEffect(() => {
     if (!canvasRef.current) return;
     setError(false);
+    // The QR library draws to a raw canvas and can't consume CSS custom
+    // properties, so read the resolved --ink value at draw time to stay
+    // correct across the light/dark Community Kit palettes.
+    const ink = getComputedStyle(canvasRef.current).getPropertyValue("--ink").trim() || "#2c2620";
     QRCode.toCanvas(canvasRef.current, value, {
       width: size,
       margin: 1,
-      color: { dark: "#f2e9da", light: "#00000000" },
+      color: { dark: ink, light: "#00000000" },
     }).catch(() => setError(true));
   }, [value, size]);
 
@@ -28,7 +32,7 @@ export function InviteQRCode({ value, size = 160 }: { value: string; size?: numb
       ref={canvasRef}
       width={size}
       height={size}
-      className="rounded-lg bg-surface-sunken border border-border"
+      className="rounded-2xl bg-surface-sunken border-2 border-border"
       aria-label={`QR code for invite code ${value}`}
     />
   );

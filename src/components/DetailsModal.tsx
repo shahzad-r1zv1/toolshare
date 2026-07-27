@@ -2,14 +2,19 @@
 
 import React, { useState, useMemo } from "react";
 import { Button, Modal, Toast, FormField } from "./ui";
-import type { Item } from "@/lib/types";
+import { uid, now, findOutstandingLoan, distanceLabel, rentalCost } from "@/lib/helpers";
+import type { State, Item, WaitlistEntry } from "@/lib/types";
 
 export function DetailsModal({
+  state,
+  setState,
   item,
   isOwnItem,
   onClose,
   onRequest,
 }: {
+  state: State;
+  setState: React.Dispatch<React.SetStateAction<State>>;
   item: Item;
   isOwnItem: boolean;
   onClose: () => void;
@@ -20,10 +25,35 @@ export function DetailsModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<{
     message: string;
-    type: "error";
+    type: "error" | "success";
   } | null>(null);
 
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+
+  const you = state.user.id;
+  const isOutstanding = Boolean(findOutstandingLoan(state.loans, item.id));
+  const waitlistEntries = state.waitlist.filter((w) => w.itemId === item.id);
+  const onWaitlist = waitlistEntries.some((w) => w.requesterId === you);
+  const owner = [state.user, ...state.friends].find((u) => u.id === item.ownerId);
+  const distance = isOwnItem ? undefined : distanceLabel(state.user.location, owner?.location);
+
+  const joinWaitlist = () => {
+    const entry: WaitlistEntry = {
+      id: uid(),
+      itemId: item.id,
+      requesterId: you,
+      createdAt: now(),
+    };
+    setState((s) => ({ ...s, waitlist: [...s.waitlist, entry] }));
+    setToast({ message: `Added to the waitlist for "${item.title}"`, type: "success" });
+  };
+
+  const leaveWaitlist = () => {
+    setState((s) => ({
+      ...s,
+      waitlist: s.waitlist.filter((w) => !(w.itemId === item.id && w.requesterId === you)),
+    }));
+  };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -56,7 +86,7 @@ export function DetailsModal({
           <img
             src={item.photos[0]}
             alt={item.title}
-            className="rounded-xl max-h-48 w-full object-cover"
+            className="rounded-2xl max-h-48 w-full object-cover border-2 border-border"
           />
         )}
 
@@ -85,9 +115,46 @@ export function DetailsModal({
               <span className="text-sm text-ink-muted">{item.avail}</span>
             </div>
           )}
+          {item.rate && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-ink-faint uppercase tracking-wide">Rental Rate</span>
+              <span className="text-sm text-ink-muted font-tag">
+                ${item.rate.amount}
+                {item.rate.unit === "day" ? "/day" : " flat"}
+              </span>
+            </div>
+          )}
+          {distance && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-ink-faint uppercase tracking-wide">Distance</span>
+              <span className="text-sm text-ink-muted">{distance}</span>
+            </div>
+          )}
         </div>
 
-        {!isOwnItem && (
+        {!isOwnItem && isOutstanding && (
+          <div className="border-t border-border pt-3 mt-1 space-y-2">
+            <p className="text-sm text-ink-muted">
+              This tool is out right now.{" "}
+              {waitlistEntries.length > 0 &&
+                `${waitlistEntries.length} ${waitlistEntries.length === 1 ? "person is" : "people are"} already waiting.`}
+            </p>
+            {onWaitlist ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-tag uppercase text-teal bg-teal-soft border-2 border-teal/40 px-2 py-1 rounded-full">
+                  You&apos;re on the waitlist
+                </span>
+                <Button kind="ghost" onClick={leaveWaitlist}>
+                  Leave waitlist
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={joinWaitlist}>Join Waitlist</Button>
+            )}
+          </div>
+        )}
+
+        {!isOwnItem && !isOutstanding && (
           <>
             <div className="border-t border-border pt-3 mt-1">
               <p className="text-sm text-ink-muted mb-2">
@@ -104,7 +171,7 @@ export function DetailsModal({
                       if (errors.start)
                         setErrors((prev) => ({ ...prev, start: "" }));
                     }}
-                    className="w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink focus:outline-none focus:border-accent"
+                    className="w-full px-3 py-2 bg-surface-sunken border-2 border-border rounded-2xl text-sm text-ink focus:outline-none focus:border-accent"
                   />
                 </FormField>
                 <FormField label="End Date" error={errors.end}>
@@ -117,10 +184,15 @@ export function DetailsModal({
                       if (errors.end)
                         setErrors((prev) => ({ ...prev, end: "" }));
                     }}
-                    className="w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink focus:outline-none focus:border-accent"
+                    className="w-full px-3 py-2 bg-surface-sunken border-2 border-border rounded-2xl text-sm text-ink focus:outline-none focus:border-accent"
                   />
                 </FormField>
               </div>
+              {item.rate && start && end && end >= start && (
+                <p className="text-sm text-teal font-tag mt-2">
+                  Estimated cost: ${rentalCost(item.rate, start, end).toFixed(2)}
+                </p>
+              )}
             </div>
             <Button onClick={handleRequest}>Request Tool</Button>
           </>

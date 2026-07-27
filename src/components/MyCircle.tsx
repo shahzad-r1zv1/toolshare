@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import { Avatar, Card, Button, EmptyState, ItemPhoto } from "./ui";
+import { trustScore, distanceLabel } from "@/lib/helpers";
 import type { State, Item } from "@/lib/types";
 
 export function MyCircle({
@@ -26,7 +27,8 @@ export function MyCircle({
   const itemsByMember = (memberId: string) =>
     state.items
       .filter(
-        (i) => i.circleId === activeCircleId && i.ownerId === memberId
+        (i) =>
+          i.circleId === activeCircleId && i.ownerId === memberId && !i.archived
       )
       .filter((i) =>
         i.title.toLowerCase().includes(search.toLowerCase())
@@ -81,18 +83,18 @@ export function MyCircle({
     <div className="space-y-6">
       {!search && !filter && (
         <div className="grid grid-cols-3 gap-3">
-          <div className="relative bg-surface border border-border rounded-xl p-3 text-center overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-accent" />
+          <div className="relative bg-surface border-2 border-border rounded-3xl p-3 text-center overflow-hidden shadow-[0_4px_0_0_hsl(var(--shadow-color)/0.12)]">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-accent" />
             <div className="text-2xl font-display font-bold text-ink font-tag">{totalItems}</div>
             <div className="text-xs text-ink-muted mt-0.5 uppercase tracking-wide">Tools shared</div>
           </div>
-          <div className="relative bg-surface border border-border rounded-xl p-3 text-center overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-warn" />
+          <div className="relative bg-surface border-2 border-border rounded-3xl p-3 text-center overflow-hidden shadow-[0_4px_0_0_hsl(var(--shadow-color)/0.12)]">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-warn" />
             <div className="text-2xl font-display font-bold text-ink font-tag">{activeLoans}</div>
             <div className="text-xs text-ink-muted mt-0.5 uppercase tracking-wide">Out on loan</div>
           </div>
-          <div className="relative bg-surface border border-border rounded-xl p-3 text-center overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-good" />
+          <div className="relative bg-surface border-2 border-border rounded-3xl p-3 text-center overflow-hidden shadow-[0_4px_0_0_hsl(var(--shadow-color)/0.12)]">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-good" />
             <div className="text-2xl font-display font-bold text-ink font-tag">{completedLoans}</div>
             <div className="text-xs text-ink-muted mt-0.5 uppercase tracking-wide">Loans completed</div>
           </div>
@@ -101,6 +103,9 @@ export function MyCircle({
       {members.map((m) => {
         const owned = itemsByMember(m.id);
         if (owned.length === 0 && (search || filter)) return null;
+        const score = trustScore(state.loans, m.id);
+        const distance =
+          m.id === state.user.id ? undefined : distanceLabel(state.user.location, m.location);
         return (
           <div key={m.id}>
             <div className="flex items-center gap-2 mb-3">
@@ -109,6 +114,23 @@ export function MyCircle({
               <span className="text-xs text-ink-faint font-tag">
                 {owned.length} {owned.length === 1 ? "tool" : "tools"}
               </span>
+              {distance && (
+                <span className="text-xs text-ink-faint font-tag">· {distance}</span>
+              )}
+              {score && (
+                <span
+                  className={`text-xs font-tag px-2 py-0.5 rounded-full border-2 ${
+                    score.onTimeRate >= 80
+                      ? "bg-good-soft border-good/40 text-good"
+                      : score.onTimeRate >= 50
+                      ? "bg-warn-soft border-warn/40 text-warn"
+                      : "bg-bad-soft border-bad/40 text-bad"
+                  }`}
+                  title={`${score.onTimeRate}% of ${score.completedCount} completed loans returned on time`}
+                >
+                  {score.onTimeRate}% on-time
+                </span>
+              )}
             </div>
             {owned.length === 0 && (
               <p className="text-sm text-ink-faint italic ml-10">

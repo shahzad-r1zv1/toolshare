@@ -2,8 +2,9 @@
 
 import React, { useState } from "react";
 import { Button, Card, Modal, EmptyState, ItemPhoto, Toast, Celebration } from "./ui";
-import { uid, filesTo64, DATE_FMT, findOverlappingLoan, dueStatus } from "@/lib/helpers";
-import type { State, Request, Loan } from "@/lib/types";
+import { MessageButton } from "./MessageThread";
+import { uid, now, filesTo64, DATE_FMT, findOutstandingLoan, dueStatus, rentalCost } from "@/lib/helpers";
+import type { State, Request, Loan, Message } from "@/lib/types";
 
 export function Requests({
   state,
@@ -92,7 +93,12 @@ export function Requests({
         ),
         loans: s.loans.map((l) =>
           l.id === r.renewLoanId
-            ? { ...l, endDate: r.endDate, renewalRequestId: undefined }
+            ? {
+                ...l,
+                endDate: r.endDate,
+                renewalRequestId: undefined,
+                cost: l.rate ? rentalCost(l.rate, l.startDate, r.endDate) : l.cost,
+              }
             : l
         ),
       }));
@@ -104,12 +110,16 @@ export function Requests({
       return;
     }
 
-    const conflict = findOverlappingLoan(state.loans, r.itemId, r.startDate, r.endDate);
+    // Blocks on ANY outstanding (never-returned) loan for this item,
+    // regardless of whether the new request's dates happen to overlap —
+    // closes the gap where a late/never-returned tool could still be
+    // approved for someone else's future dates while still out.
+    const conflict = findOutstandingLoan(state.loans, r.itemId);
     if (conflict) {
       setToast({
-        message: `Can't approve — "${item?.title}" is already booked ${DATE_FMT(
-          conflict.startDate
-        )} → ${DATE_FMT(conflict.endDate)}.`,
+        message: `Can't approve — "${item?.title}" is still out, due back ${DATE_FMT(
+          conflict.endDate
+        )}. Mark it returned first.`,
         type: "error",
       });
       return;
@@ -124,6 +134,8 @@ export function Requests({
       endDate: r.endDate,
       status: "ACTIVE",
       returnPhotos: [],
+      rate: item?.rate,
+      cost: item?.rate ? rentalCost(item.rate, r.startDate, r.endDate) : undefined,
     };
     setState((s) => ({
       ...s,
@@ -131,6 +143,10 @@ export function Requests({
         x.id === r.id ? { ...x, status: "APPROVED" as const } : x
       ),
       loans: [loan, ...s.loans],
+      // The new borrower no longer needs to wait for this item.
+      waitlist: s.waitlist.filter(
+        (w) => !(w.itemId === r.itemId && w.requesterId === r.borrowerId)
+      ),
     }));
     setToast({
       message: `Approved request for "${item?.title}"`,
@@ -160,6 +176,15 @@ export function Requests({
     });
   };
 
+  const markPaid = (loan: Loan) => {
+    setState((s) => ({
+      ...s,
+      loans: s.loans.map((l) => (l.id === loan.id ? { ...l, paid: true } : l)),
+    }));
+    const title = findItem(loan.itemId)?.title ?? loan.itemTitle;
+    setToast({ message: `Marked "${title}" as paid`, type: "success" });
+  };
+
   const requestRenewal = (loan: Loan, newEndDate: string) => {
     const req: Request = {
       id: uid(),
@@ -187,6 +212,14 @@ export function Requests({
   const nudge = (l: Loan) => {
     const title = findItem(l.itemId)?.title ?? l.itemTitle;
     const borrower = findUser(l.borrowerId);
+    const message: Message = {
+      id: uid(),
+      threadId: l.id,
+      senderId: you,
+      text: `Hey! Just checking in on "${title}" — could you return it when you get a chance?`,
+      createdAt: now(),
+    };
+    setState((s) => ({ ...s, messages: [...s.messages, message] }));
     setToast({
       message: `Nudge sent to ${borrower?.name || "the borrower"} about "${title}" 👋`,
       type: "info",
@@ -212,13 +245,21 @@ export function Requests({
               status: "RETURNED" as const,
               returnNotes: returnNotes.trim() || undefined,
               returnPhotos: photos,
+              returnedAt: now(),
+              ownerConfirmedReturn: true,
             }
           : x
       ),
     }));
     const title = findItem(returning.itemId)?.title ?? returning.itemTitle;
+    const waiting = state.waitlist.filter((w) => w.itemId === returning.itemId);
     setToast({
-      message: `"${title}" marked as returned`,
+      message:
+        waiting.length > 0
+          ? `"${title}" marked as returned — ${waiting.length} ${
+              waiting.length === 1 ? "person is" : "people are"
+            } waiting for it`
+          : `"${title}" marked as returned`,
       type: "success",
     });
     setCelebrate(true);
@@ -233,8 +274,8 @@ export function Requests({
   return (
     <div className="space-y-6">
       {dueSoonLoans.length > 0 && (
-        <div className="relative rounded-xl border border-warn/40 bg-warn-soft p-4 overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-[2px] hazard-edge" />
+        <div className="relative rounded-3xl border-2 border-warn/40 bg-warn-soft p-4 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-[3px] kit-edge" />
           <h3 className="font-display font-bold text-sm text-warn mb-2 pt-0.5 flex items-center gap-1.5 uppercase tracking-wide">
             ⏰ Due Soon
           </h3>
@@ -257,7 +298,7 @@ export function Requests({
                   <span
                     className={`text-xs shrink-0 px-2 py-0.5 rounded-full font-tag uppercase ${
                       status === "overdue"
-                        ? "bg-bad text-white"
+                        ? "bg-bad text-accent-ink"
                         : "bg-warn text-accent-ink"
                     }`}
                   >
@@ -350,6 +391,12 @@ export function Requests({
                       </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
+                      <MessageButton
+                        state={state}
+                        setState={setState}
+                        threadId={r.id}
+                        otherPartyName={borrower?.name || "them"}
+                      />
                       <Button onClick={() => approve(r)}>Approve</Button>
                       <Button kind="secondary" onClick={() => decline(r)}>
                         Decline
@@ -386,9 +433,17 @@ export function Requests({
                           : `${DATE_FMT(r.startDate)} → ${DATE_FMT(r.endDate)}`}
                       </div>
                     </div>
-                    <span className="text-xs font-tag uppercase text-warn bg-warn-soft border border-warn/30 px-2 py-1 rounded-lg shrink-0">
-                      Pending
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <MessageButton
+                        state={state}
+                        setState={setState}
+                        threadId={r.id}
+                        otherPartyName={owner?.name || "them"}
+                      />
+                      <span className="text-xs font-tag uppercase text-warn bg-warn-soft border-2 border-warn/30 px-2 py-1 rounded-full">
+                        Pending
+                      </span>
+                    </div>
                   </div>
                 </Card>
               );
@@ -401,7 +456,7 @@ export function Requests({
         <section>
           <h3 className="font-display font-bold text-lg mb-3 flex items-center gap-2 text-ink">
             Active Loans
-            <span className="text-xs font-tag bg-surface-sunken border border-border text-ink-muted px-2 py-0.5 rounded-full">
+            <span className="text-xs font-tag bg-teal text-teal-ink px-2 py-0.5 rounded-full">
               {active.length}
             </span>
           </h3>
@@ -432,7 +487,7 @@ export function Requests({
                 <Card key={l.id}>
                   <div
                     className={`flex items-center gap-3 ${
-                      status === "overdue" ? "-m-4 p-4 rounded-xl bg-bad-soft" : ""
+                      status === "overdue" ? "-m-4 p-4 rounded-3xl bg-bad-soft" : ""
                     }`}
                   >
                     <ItemPhoto src={item?.photos[0]} alt={title} />
@@ -447,8 +502,27 @@ export function Requests({
                         {dueSuffix}
                         {l.renewalRequestId && " • Extension pending"}
                       </div>
+                      {l.cost != null && (
+                        <div className="text-xs text-teal font-tag">
+                          ${l.cost.toFixed(2)} {l.paid ? "· paid" : "· unpaid"}
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2 shrink-0">
+                      <MessageButton
+                        state={state}
+                        setState={setState}
+                        threadId={l.id}
+                        otherPartyName={
+                          (iOwnThisItem ? borrower?.name : findUser(item?.ownerId || "")?.name) ||
+                          "them"
+                        }
+                      />
+                      {l.cost != null && !l.paid && (
+                        <Button kind="ghost" onClick={() => markPaid(l)}>
+                          Mark Paid
+                        </Button>
+                      )}
                       {iOwnThisItem && status === "overdue" && (
                         <Button kind="secondary" onClick={() => nudge(l)}>
                           Nudge
@@ -497,7 +571,7 @@ export function Requests({
             onChange={(e) => setReturnNotes(e.target.value)}
             placeholder="Condition, any issues…"
             rows={2}
-            className="w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent resize-none"
+            className="w-full px-3 py-2 bg-surface-sunken border-2 border-border rounded-2xl text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent resize-none"
           />
           <label className="block text-xs font-semibold uppercase tracking-wide text-ink-muted mb-1.5">
             Return Photos (optional)
@@ -509,7 +583,7 @@ export function Requests({
             onChange={(e) =>
               setReturnFiles(Array.from(e.target.files || []))
             }
-            className="text-sm text-ink-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface-sunken file:px-3 file:py-2 file:text-sm file:text-ink file:font-medium hover:file:bg-surface-raised"
+            className="text-sm text-ink-muted file:mr-3 file:rounded-full file:border-0 file:bg-surface-sunken file:px-3 file:py-2 file:text-sm file:text-ink file:font-bold hover:file:bg-surface-raised"
           />
           <div className="flex gap-2 pt-1">
             <Button onClick={markReturned}>Confirm Return</Button>
@@ -538,7 +612,7 @@ export function Requests({
             min={renewing.endDate}
             value={renewDate}
             onChange={(e) => setRenewDate(e.target.value)}
-            className="w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink focus:outline-none focus:border-accent"
+            className="w-full px-3 py-2 bg-surface-sunken border-2 border-border rounded-2xl text-sm text-ink focus:outline-none focus:border-accent"
           />
           <div className="flex gap-2 pt-1">
             <Button

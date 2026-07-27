@@ -3,10 +3,11 @@
 import React, { useState } from "react";
 import { Button, Modal, Spinner, ConfirmDialog } from "./ui";
 import { InviteQRCode } from "./InviteQRCode";
-import type { Circle } from "@/lib/types";
+import { coarsenLocation } from "@/lib/helpers";
+import type { Circle, State } from "@/lib/types";
 
 const inputClass =
-  "w-full px-3 py-2 bg-surface-sunken border border-border rounded-lg text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent";
+  "w-full px-3 py-2 bg-surface-sunken border-2 border-border rounded-2xl text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent";
 
 export function CircleForms({
   createCircle,
@@ -55,7 +56,7 @@ export function CircleForms({
   return (
     <div className="space-y-5">
       {error && (
-        <div className="bg-bad-soft border border-bad/40 rounded-lg px-4 py-3 text-sm text-bad">
+        <div className="bg-bad-soft border-2 border-bad/40 rounded-2xl px-4 py-3 text-sm text-bad">
           {error}
         </div>
       )}
@@ -135,7 +136,7 @@ export function InviteModal({
       </div>
       <button
         onClick={onCopy}
-        className="w-full text-center font-tag text-lg tracking-[0.3em] bg-surface-sunken border border-border rounded-lg py-3 text-ink hover:border-accent transition-colors"
+        className="w-full text-center font-tag text-lg tracking-[0.3em] bg-surface-sunken border-2 border-border rounded-2xl py-3 text-ink hover:border-accent transition-colors"
         title="Click to copy the invite code"
       >
         {inviteCode}
@@ -183,7 +184,7 @@ function LeaveCircleSection({
         removed too. Blocked while you have an active loan there.
       </p>
       {error && (
-        <div className="bg-bad-soft border border-bad/40 rounded-lg px-4 py-3 text-sm text-bad mb-2">
+        <div className="bg-bad-soft border-2 border-bad/40 rounded-2xl px-4 py-3 text-sm text-bad mb-2">
           {error}
         </div>
       )}
@@ -191,7 +192,7 @@ function LeaveCircleSection({
         {circles.map((c) => (
           <div
             key={c.id}
-            className="flex items-center justify-between bg-surface-sunken border border-border rounded-lg px-3 py-2"
+            className="flex items-center justify-between bg-surface-sunken border-2 border-border rounded-2xl px-3 py-2"
           >
             <span className="text-sm text-ink">{c.name}</span>
             <Button kind="ghost" onClick={() => setPending(c)}>
@@ -214,7 +215,78 @@ function LeaveCircleSection({
   );
 }
 
+function LocationSection({
+  state,
+  setState,
+  onDone,
+}: {
+  state: State;
+  setState: React.Dispatch<React.SetStateAction<State>>;
+  onDone: (message: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hasLocation = Boolean(state.user.location);
+
+  const shareLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setError("Location isn't available in this browser.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const location = coarsenLocation({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+        setState((s) => ({ ...s, user: { ...s.user, location } }));
+        onDone("Location shared — others can now see roughly how far your tools are.");
+        setBusy(false);
+      },
+      () => {
+        setError("Couldn't get your location. Check your browser's location permission.");
+        setBusy(false);
+      },
+      { timeout: 10000 }
+    );
+  };
+
+  const clearLocation = () => {
+    setState((s) => ({ ...s, user: { ...s.user, location: undefined } }));
+    onDone("Location removed.");
+  };
+
+  return (
+    <div className="border-t border-border pt-4">
+      <h4 className="font-display font-semibold mb-1 text-ink">Your location</h4>
+      <p className="text-xs text-ink-muted mb-2">
+        Share a rough location so circle members can see how far your tools
+        are (never an exact address — just an approximate distance).
+      </p>
+      {error && (
+        <div className="bg-bad-soft border-2 border-bad/40 rounded-2xl px-4 py-3 text-sm text-bad mb-2">
+          {error}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Button kind="secondary" onClick={shareLocation} disabled={busy}>
+          {busy ? <Spinner size="sm" /> : hasLocation ? "Update Location" : "Share Location"}
+        </Button>
+        {hasLocation && (
+          <Button kind="ghost" onClick={clearLocation}>
+            Remove
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function CircleManagerModal({
+  state,
+  setState,
   circles,
   createCircle,
   joinCircle,
@@ -223,6 +295,8 @@ export function CircleManagerModal({
   onClose,
   onDone,
 }: {
+  state: State;
+  setState: React.Dispatch<React.SetStateAction<State>>;
   circles: Circle[];
   createCircle: (name: string) => Promise<void>;
   joinCircle: (code: string) => Promise<void>;
@@ -247,6 +321,7 @@ export function CircleManagerModal({
         leaveCircle={leaveCircle}
         onDone={onDone}
       />
+      <LocationSection state={state} setState={setState} onDone={onDone} />
     </Modal>
   );
 }

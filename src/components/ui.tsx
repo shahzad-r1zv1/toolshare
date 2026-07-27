@@ -1,6 +1,41 @@
 "use client";
 
 import React from "react";
+import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
+
+export function ThemeToggle() {
+  const [theme, setTheme] = React.useState<Theme>("dark");
+
+  React.useEffect(() => {
+    const current = document.documentElement.getAttribute("data-theme");
+    setTheme(current === "light" ? "light" : getStoredTheme() || "dark");
+  }, []);
+
+  const toggle = () => {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+    setTheme(next);
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      className="w-9 h-9 flex items-center justify-center bg-surface-sunken hover:bg-surface-raised border-2 border-border text-ink rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
+      aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+    >
+      {theme === "dark" ? (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1.5m0 15V21m9-9h-1.5M4.5 12H3m15.36 6.36l-1.06-1.06M6.7 6.7L5.64 5.64m12.72 0l-1.06 1.06M6.7 17.3l-1.06 1.06M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+        </svg>
+      ) : (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21.752 15.002A9.72 9.72 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+        </svg>
+      )}
+    </button>
+  );
+}
 
 export function Button({
   onClick,
@@ -16,17 +51,17 @@ export function Button({
   disabled?: boolean;
 }) {
   const base =
-    "px-3.5 py-2 rounded-lg text-sm font-semibold tracking-tight transition-all duration-100 active:translate-y-px focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-bg";
+    "px-4 py-2.5 rounded-2xl text-sm font-bold tracking-tight border-2 transition-all duration-100 active:translate-y-[3px] focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-bg";
   const map: Record<string, string> = {
     primary:
-      "bg-accent hover:bg-accent-strong text-accent-ink shadow-[0_1px_0_0_var(--accent-strong)] hover:shadow-[0_2px_0_0_var(--accent-strong)]",
+      "bg-accent hover:bg-accent-strong text-accent-ink border-border shadow-[0_3px_0_0_var(--border)] active:shadow-none",
     secondary:
-      "bg-surface-raised hover:bg-surface-sunken text-ink border border-border-strong",
-    ghost: "bg-transparent hover:bg-surface-raised text-ink",
+      "bg-surface-raised hover:bg-surface-sunken text-ink border-border shadow-[0_3px_0_0_var(--border)] active:shadow-none",
+    ghost: "bg-transparent hover:bg-surface-raised text-ink border-transparent",
     danger:
-      "bg-bad hover:brightness-110 text-white shadow-[0_1px_0_0_rgba(0,0,0,0.25)]",
+      "bg-bad hover:brightness-105 text-accent-ink border-border shadow-[0_3px_0_0_var(--border)] active:shadow-none",
   };
-  const disabledStyle = "opacity-40 cursor-not-allowed active:translate-y-0";
+  const disabledStyle = "opacity-40 cursor-not-allowed active:translate-y-0 active:shadow-[0_3px_0_0_var(--border)]";
   return (
     <button
       type={type}
@@ -41,26 +76,26 @@ export function Button({
 
 export function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-surface border border-border rounded-xl p-4 shadow-[0_1px_2px_hsl(var(--shadow-color)/0.25)]">
+    <div className="bg-surface border-2 border-border rounded-3xl p-4 shadow-[0_4px_0_0_hsl(var(--shadow-color)/0.15)]">
       {children}
     </div>
   );
 }
 
 /**
- * Warm, workshop-toned palette so each circle member gets a distinct but
- * harmonious color — variations on amber/rust/olive rather than a generic
- * rainbow of SaaS brand colors.
+ * Coral/teal/sunshine palette so each circle member gets a distinct but
+ * harmonious color pulled from the Community Kit accent family, rather than
+ * a generic rainbow of SaaS brand colors.
  */
 const AVATAR_COLORS = [
-  "#c67f1f", // accent amber
-  "#b3402b", // rust
-  "#5c7a4f", // olive
-  "#7a5c8a", // plum
-  "#3f7d55", // workshop green
-  "#a8690f", // burnt orange
-  "#5f7d8a", // slate blue
-  "#8a5c3f", // leather brown
+  "#ff5a42", // coral
+  "#0ea99a", // teal
+  "#ffc736", // sunshine
+  "#f0508a", // berry pink
+  "#3aa0f0", // sky blue
+  "#ff9f2e", // apricot
+  "#6ab53e", // meadow green
+  "#a566f5", // violet
 ];
 
 const colorForName = (name: string): string => {
@@ -74,7 +109,7 @@ const colorForName = (name: string): string => {
 export function Avatar({ name }: { name: string }) {
   return (
     <div
-      className="w-8 h-8 flex items-center justify-center rounded-full text-white text-xs font-bold shrink-0 font-display"
+      className="w-8 h-8 flex items-center justify-center rounded-full text-white text-xs font-bold shrink-0 font-display border-2 border-border"
       style={{ backgroundColor: colorForName(name) }}
     >
       {name.charAt(0).toUpperCase()}
@@ -109,13 +144,13 @@ export function Modal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative bg-surface-raised border border-border rounded-xl p-4 max-w-lg w-full animate-in shadow-[0_12px_32px_hsl(var(--shadow-color)/0.4)] overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-[3px] hazard-edge" />
+      <div className="relative bg-surface-raised border-2 border-border rounded-3xl p-4 max-w-lg w-full animate-in shadow-[0_16px_36px_hsl(var(--shadow-color)/0.35)] overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-[4px] kit-edge" />
         <div className="flex items-center justify-between mb-3 pt-1">
           <h4 className="font-display font-bold text-lg tracking-tight text-ink">{title}</h4>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-surface-sunken text-ink-muted hover:text-ink transition-colors"
+            className="p-1 rounded-full hover:bg-surface-sunken text-ink-muted hover:text-ink transition-colors"
             aria-label="Close dialog"
           >
             <svg
@@ -189,7 +224,7 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-14 px-4 text-center border border-dashed border-border rounded-xl">
+    <div className="flex flex-col items-center justify-center py-14 px-4 text-center border-2 border-dashed border-border rounded-3xl">
       {icon && <div className="text-ink-faint mb-3">{icon}</div>}
       <h3 className="text-ink font-display font-semibold text-base mb-1">{title}</h3>
       {description && (
@@ -232,7 +267,7 @@ export function Toast({
 
   return (
     <div
-      className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-3 rounded-lg border text-sm font-medium shadow-[0_8px_24px_hsl(var(--shadow-color)/0.35)] flex items-center gap-2 animate-in ${colorMap[type]}`}
+      className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-3 rounded-2xl border-2 text-sm font-medium shadow-[0_6px_0_0_hsl(var(--shadow-color)/0.2)] flex items-center gap-2 animate-in ${colorMap[type]}`}
       role="alert"
     >
       <span className={`font-bold ${iconColorMap[type]}`}>{iconMap[type]}</span>
@@ -249,11 +284,11 @@ export function Toast({
 }
 
 const CONFETTI_COLORS = [
-  "#e8a23d", // accent amber
-  "#b3402b", // rust
-  "#5c7a4f", // olive
-  "#7a5c8a", // plum
-  "#5f7d8a", // slate blue
+  "#ff5a42", // coral
+  "#0ea99a", // teal
+  "#ffc736", // sunshine
+  "#f0508a", // berry pink
+  "#3aa0f0", // sky blue
 ];
 
 /**
@@ -330,8 +365,8 @@ export function ConfirmDialog({
       aria-modal="true"
       aria-label={title}
     >
-      <div className="relative bg-surface-raised border border-border rounded-xl p-5 max-w-sm w-full shadow-[0_12px_32px_hsl(var(--shadow-color)/0.4)] overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-[3px] hazard-edge" />
+      <div className="relative bg-surface-raised border-2 border-border rounded-3xl p-5 max-w-sm w-full shadow-[0_16px_36px_hsl(var(--shadow-color)/0.35)] overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-[4px] kit-edge" />
         <h4 className="font-display font-bold text-lg mb-2 pt-1 text-ink">{title}</h4>
         <p className="text-ink-muted text-sm mb-4">{message}</p>
         <div className="flex gap-2 justify-end">
@@ -373,14 +408,14 @@ export function ItemPhoto({
       <img
         src={src}
         alt={alt}
-        className={`${sizeMap[size]} object-cover rounded-md border border-border shrink-0`}
+        className={`${sizeMap[size]} object-cover rounded-2xl border-2 border-border shrink-0`}
       />
     );
   }
 
   return (
     <div
-      className={`${sizeMap[size]} flex items-center justify-center bg-surface-sunken border border-border ${textMap[size]} text-ink-faint rounded-md shrink-0 font-tag uppercase`}
+      className={`${sizeMap[size]} flex items-center justify-center bg-surface-sunken border-2 border-border ${textMap[size]} text-ink-faint rounded-2xl shrink-0 font-tag uppercase`}
     >
       No Photo
     </div>

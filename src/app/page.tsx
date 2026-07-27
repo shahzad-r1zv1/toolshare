@@ -6,16 +6,18 @@ import { useRouter } from "next/navigation";
 import { uid, now, DATE_FMT, findOverlappingLoan } from "@/lib/helpers";
 import { useAppState } from "@/lib/store";
 import type { Item, Request } from "@/lib/types";
-import { LoadingScreen, Toast } from "@/components/ui";
+import { LoadingScreen, Toast, ThemeToggle } from "@/components/ui";
 import { MyCircle } from "@/components/MyCircle";
 import { MyItems } from "@/components/MyItems";
 import { Requests } from "@/components/Requests";
 import { LoanHistory } from "@/components/LoanHistory";
 import { Wishlist } from "@/components/Wishlist";
+import { Consumables } from "@/components/Consumables";
 import { DetailsModal } from "@/components/DetailsModal";
 import { CircleForms, CircleManagerModal, InviteModal } from "@/components/CircleManager";
+import { NetworkSearchResults } from "@/components/NetworkSearchResults";
 
-type Tab = "circle" | "items" | "reqs" | "wishlist" | "history";
+type Tab = "circle" | "items" | "reqs" | "wishlist" | "consumables" | "history";
 
 const TAB_CONFIG: { key: Tab; label: string; icon: React.ReactNode }[] = [
   {
@@ -55,6 +57,15 @@ const TAB_CONFIG: { key: Tab; label: string; icon: React.ReactNode }[] = [
     ),
   },
   {
+    key: "consumables",
+    label: "Consumables",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25" />
+      </svg>
+    ),
+  },
+  {
     key: "history",
     label: "History",
     icon: (
@@ -81,6 +92,7 @@ export default function Page() {
   const [activeCircleId, setActiveCircleId] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
+  const [searchScope, setSearchScope] = useState<"circle" | "network">("circle");
   const [detailsFor, setDetailsFor] = useState<Item | null>(null);
   const [circlesOpen, setCirclesOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -101,7 +113,7 @@ export default function Page() {
   const categories = Array.from(
     new Set(
       state.items
-        .filter((i) => i.circleId === activeCircleId)
+        .filter((i) => i.circleId === activeCircleId && !i.archived)
         .map((i) => i.category)
         .filter(Boolean)
     )
@@ -168,8 +180,8 @@ export default function Page() {
   return (
     <div className="min-h-screen bg-bg text-ink">
       {/* Header */}
-      <header className="relative bg-surface sticky top-0 z-10 shadow-[0_1px_0_hsl(var(--shadow-color)/0.3)]">
-        <div className="absolute top-0 left-0 right-0 h-[3px] hazard-edge" />
+      <header className="relative bg-surface sticky top-0 z-10 border-b-2 border-border shadow-[0_2px_0_hsl(var(--shadow-color)/0.15)]">
+        <div className="absolute top-0 left-0 right-0 h-[4px] kit-edge" />
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 pt-[19px]">
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-xl font-display font-extrabold tracking-tight text-ink">
@@ -177,7 +189,7 @@ export default function Page() {
             </h1>
             {hasCircles && (
               <select
-                className="bg-surface-sunken border border-border text-sm rounded-lg px-2 py-1 text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+                className="bg-surface-sunken border-2 border-border text-sm rounded-xl px-2 py-1 text-ink focus:outline-none focus:ring-1 focus:ring-accent"
                 value={activeCircleId}
                 onChange={(e) => setActiveCircleId(e.target.value)}
                 aria-label="Select circle"
@@ -203,14 +215,14 @@ export default function Page() {
             )}
             <button
               onClick={() => setCirclesOpen(true)}
-              className="px-2 py-1 text-xs font-medium bg-surface-sunken hover:bg-surface-raised border border-border text-ink-muted hover:text-ink rounded-lg transition-colors"
+              className="px-2 py-1 text-xs font-bold bg-surface-sunken hover:bg-surface-raised border-2 border-border text-ink-muted hover:text-ink rounded-full transition-colors"
               aria-label="Manage circles"
             >
               + Circles
             </button>
             {mode === "local" && (
               <span
-                className="flex items-center gap-1 text-[10px] font-tag uppercase bg-warn-soft text-warn border border-warn/50 px-2 py-0.5 rounded-full tag-pulse"
+                className="flex items-center gap-1 text-[10px] font-tag uppercase bg-warn-soft text-warn border-2 border-warn/50 px-2 py-0.5 rounded-full tag-pulse"
                 title="Firebase is not configured; data stays on this device only and can't be shared with others."
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -226,16 +238,17 @@ export default function Page() {
               <img
                 src={user.photoURL}
                 alt={user.displayName || "User"}
-                className="w-8 h-8 rounded-full border border-border"
+                className="w-8 h-8 rounded-full border-2 border-border"
                 referrerPolicy="no-referrer"
               />
             )}
             <span className="text-sm text-ink-muted hidden sm:inline">
               {user.displayName || user.email}
             </span>
+            <ThemeToggle />
             <button
               onClick={signOut}
-              className="px-3 py-1.5 text-sm font-medium bg-surface-sunken hover:bg-surface-raised border border-border text-ink rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
+              className="px-3 py-1.5 text-sm font-bold bg-surface-sunken hover:bg-surface-raised border-2 border-border text-ink rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
               aria-label="Sign out"
             >
               Sign Out
@@ -245,13 +258,13 @@ export default function Page() {
       </header>
 
       {(authError || syncError) && (
-        <div className="bg-bad-soft border-b border-bad/40 px-4 py-3 text-center">
+        <div className="bg-bad-soft border-b-2 border-bad/40 px-4 py-3 text-center">
           <p className="text-sm text-bad">{authError || syncError}</p>
         </div>
       )}
 
       {mode === "local" && !offlineBannerDismissed && (
-        <div className="bg-warn-soft border-b border-warn/40 px-4 py-3">
+        <div className="bg-warn-soft border-b-2 border-warn/40 px-4 py-3">
           <div className="max-w-5xl mx-auto flex items-start sm:items-center justify-between gap-3">
             <p className="text-sm text-ink">
               <b className="text-warn">Offline demo mode.</b> Firebase isn&apos;t configured, so
@@ -261,7 +274,7 @@ export default function Page() {
             </p>
             <button
               onClick={() => setOfflineBannerDismissed(true)}
-              className="shrink-0 text-warn hover:brightness-110 text-sm px-2 py-1 font-medium"
+              className="shrink-0 text-warn hover:brightness-110 text-sm px-2 py-1 font-bold"
               aria-label="Dismiss"
             >
               Dismiss
@@ -273,8 +286,8 @@ export default function Page() {
       {!hasCircles ? (
         /* First-run: no circles yet — create or join one. */
         <main className="p-4 max-w-md mx-auto mt-8">
-          <div className="relative bg-surface border border-border rounded-xl p-6 overflow-hidden shadow-[0_1px_2px_hsl(var(--shadow-color)/0.25)]">
-            <div className="absolute top-0 left-0 right-0 h-[3px] hazard-edge" />
+          <div className="relative bg-surface border-2 border-border rounded-3xl p-6 overflow-hidden shadow-[0_6px_0_0_hsl(var(--shadow-color)/0.12)]">
+            <div className="absolute top-0 left-0 right-0 h-[4px] kit-edge" />
             <h2 className="text-lg font-display font-bold mb-1 pt-1 text-ink">
               Welcome{state.user.name ? `, ${state.user.name}` : ""}! 👋
             </h2>
@@ -313,8 +326,10 @@ export default function Page() {
                 aria-label="Search tools"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search tools..."
-                className="w-full pl-10 pr-3 py-2 bg-surface border border-border rounded-lg text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent"
+                placeholder={
+                  searchScope === "network" ? "Search your whole network..." : "Search tools..."
+                }
+                className="w-full pl-10 pr-3 py-2 bg-surface border-2 border-border rounded-2xl text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent"
               />
               {search && (
                 <button
@@ -326,58 +341,83 @@ export default function Page() {
                 </button>
               )}
             </div>
-            <select
-              aria-label="Filter by category"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="px-3 py-2 bg-surface border border-border rounded-lg text-sm text-ink focus:outline-none focus:border-accent"
-            >
-              <option value="">All Categories</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            {searchScope === "circle" && (
+              <select
+                aria-label="Filter by category"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="px-3 py-2 bg-surface border-2 border-border rounded-2xl text-sm text-ink focus:outline-none focus:border-accent"
+              >
+                <option value="">All Categories</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            )}
+            <div className="flex bg-surface-sunken border-2 border-border rounded-full p-1 text-xs font-bold shrink-0">
+              <button
+                onClick={() => setSearchScope("circle")}
+                className={`px-3 py-1 rounded-full transition-colors ${
+                  searchScope === "circle" ? "bg-accent text-accent-ink" : "text-ink-muted"
+                }`}
+              >
+                This circle
+              </button>
+              <button
+                onClick={() => setSearchScope("network")}
+                className={`px-3 py-1 rounded-full transition-colors ${
+                  searchScope === "network" ? "bg-accent text-accent-ink" : "text-ink-muted"
+                }`}
+              >
+                All circles
+              </button>
+            </div>
           </div>
 
           {/* Tab Navigation */}
-          <nav className="flex gap-1 mb-6 border-b border-border pb-1" role="tablist">
-            {TAB_CONFIG.map(({ key, label, icon }) => {
-              const isActive = tab === key;
-              const badge =
-                key === "reqs" ? pendingRequestCount + activeLoansCount : 0;
-              return (
-                <button
-                  key={key}
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setTab(key)}
-                  className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-t-lg transition-colors ${
-                    isActive
-                      ? "bg-accent text-accent-ink"
-                      : "text-ink-muted hover:text-ink hover:bg-surface"
-                  }`}
-                >
-                  {icon}
-                  <span className="hidden sm:inline">{label}</span>
-                  {badge > 0 && (
-                    <span
-                      className={`text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center font-tag ${
-                        isActive
-                          ? "bg-accent-ink/20 text-accent-ink"
-                          : "bg-accent text-accent-ink"
-                      }`}
-                    >
-                      {badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+          {searchScope === "circle" && (
+            <nav className="flex gap-2 mb-6 flex-wrap" role="tablist">
+              {TAB_CONFIG.map(({ key, label, icon }) => {
+                const isActive = tab === key;
+                const badge =
+                  key === "reqs" ? pendingRequestCount + activeLoansCount : 0;
+                return (
+                  <button
+                    key={key}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setTab(key)}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-full border-2 border-border transition-all active:translate-y-[3px] active:shadow-none ${
+                      isActive
+                        ? "bg-accent text-accent-ink shadow-[0_3px_0_0_var(--border)]"
+                        : "bg-surface text-ink-muted hover:text-ink shadow-[0_3px_0_0_var(--border)]"
+                    }`}
+                  >
+                    {icon}
+                    <span className="hidden sm:inline">{label}</span>
+                    {badge > 0 && (
+                      <span
+                        className={`text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center font-tag ${
+                          isActive
+                            ? "bg-accent-ink/20 text-accent-ink"
+                            : "bg-teal text-teal-ink"
+                        }`}
+                      >
+                        {badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          )}
 
           {/* Tab Content */}
+          {searchScope === "network" ? (
+            <NetworkSearchResults state={state} search={search} onOpenDetails={onOpenDetails} />
+          ) : (
           <div role="tabpanel">
             {tab === "circle" && (
               <MyCircle
@@ -411,16 +451,27 @@ export default function Page() {
                 search={search}
               />
             )}
+            {tab === "consumables" && (
+              <Consumables
+                state={state}
+                setState={setState}
+                activeCircleId={activeCircleId}
+                search={search}
+              />
+            )}
             {tab === "history" && (
-              <LoanHistory state={state} search={search} filter={filter} />
+              <LoanHistory state={state} setState={setState} search={search} filter={filter} />
             )}
           </div>
+          )}
         </main>
       )}
 
       {/* Circle management modal */}
       {circlesOpen && (
         <CircleManagerModal
+          state={state}
+          setState={setState}
           circles={state.circles}
           createCircle={createCircle}
           joinCircle={joinCircle}
@@ -444,6 +495,8 @@ export default function Page() {
       {/* Details Modal */}
       {detailsFor && (
         <DetailsModal
+          state={state}
+          setState={setState}
           item={detailsFor}
           isOwnItem={state.user.id === detailsFor.ownerId}
           onClose={onCloseDetails}
