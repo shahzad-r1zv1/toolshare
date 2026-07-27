@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react";
 import { Avatar, Card, Button, EmptyState, ItemPhoto } from "./ui";
-import { trustScore, distanceLabel } from "@/lib/helpers";
+import { trustScore, distanceLabel, formatAvailability, hasAvailability } from "@/lib/helpers";
 import type { State, Item } from "@/lib/types";
 
 export function MyCircle({
@@ -149,7 +149,12 @@ export function MyCircle({
                           {item.category}
                         </div>
                       )}
-                      {item.avail && (
+                      {hasAvailability(item.availability) && (
+                        <div className="text-xs text-ink-faint">
+                          {formatAvailability(item.availability)}
+                        </div>
+                      )}
+                      {!hasAvailability(item.availability) && item.avail && (
                         <div className="text-xs text-ink-faint">
                           {item.avail}
                         </div>

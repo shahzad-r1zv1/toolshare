@@ -16,6 +16,7 @@ import { Consumables } from "@/components/Consumables";
 import { DetailsModal } from "@/components/DetailsModal";
 import { CircleForms, CircleManagerModal, InviteModal } from "@/components/CircleManager";
 import { NetworkSearchResults } from "@/components/NetworkSearchResults";
+import { capturePendingJoinCode, takePendingJoinCode } from "@/components/InviteQRCode";
 
 type Tab = "circle" | "items" | "reqs" | "wishlist" | "consumables" | "history";
 
@@ -83,6 +84,10 @@ export default function Page() {
     useAppState(user);
 
   useEffect(() => {
+    capturePendingJoinCode();
+  }, []);
+
+  useEffect(() => {
     if (!loading && !user) {
       router.replace("/login");
     }
@@ -108,6 +113,33 @@ export default function Page() {
       setActiveCircleId(state.circles[0]?.id || "");
     }
   }, [state.circles, activeCircleId]);
+
+  // Auto-join a circle from a scanned invite QR code once the user is
+  // signed in and their existing circles have loaded.
+  useEffect(() => {
+    if (!ready || !user) return;
+    const code = takePendingJoinCode();
+    if (!code) return;
+    if (mode !== "cloud") {
+      setToast({
+        message: "Joining circles from an invite link needs the cloud version.",
+        type: "error",
+      });
+      return;
+    }
+    joinCircle(code)
+      .then(() => setToast({ message: "Joined circle!", type: "success" }))
+      .catch((err) =>
+        setToast({
+          message: err instanceof Error ? err.message : "Failed to join circle.",
+          type: "error",
+        })
+      );
+    // Runs once per mount after auth/circles settle; joinCircle/setToast are
+    // stable enough in practice and re-running on their identity changes
+    // would risk a duplicate join attempt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, user, mode]);
 
   const activeCircle = state.circles.find((c) => c.id === activeCircleId);
   const categories = Array.from(

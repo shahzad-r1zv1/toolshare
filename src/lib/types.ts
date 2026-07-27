@@ -11,6 +11,20 @@ export type Circle = {
   inviteCode: string;
   members: string[];
 };
+export const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+export type DayOfWeek = (typeof DAYS_OF_WEEK)[number];
+export const TIME_SLOTS = ["Morning", "Afternoon", "Evening"] as const;
+export type TimeSlot = (typeof TIME_SLOTS)[number];
+
+/**
+ * Which days/time-of-day windows an item is generally available, e.g.
+ * { Sat: ["Morning", "Afternoon"], Sun: ["Morning", "Afternoon"] } for
+ * "weekend mornings and afternoons". An empty/missing entry for a day means
+ * not available that day. Undefined (not just empty) means the owner hasn't
+ * set structured availability at all.
+ */
+export type Availability = Partial<Record<DayOfWeek, TimeSlot[]>>;
+
 export type Item = {
   id: string;
   ownerId: string;
@@ -20,7 +34,9 @@ export type Item = {
   photos: string[];
   note?: string;
   rv?: number;
+  /** Legacy free-text availability, kept for items saved before structured availability shipped. */
   avail?: string;
+  availability?: Availability;
   createdAt: number;
   /** Archived items are hidden from browsing/requesting but keep their loan history. */
   archived?: boolean;

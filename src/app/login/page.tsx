@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LoadingScreen, Spinner, ThemeToggle } from "@/components/ui";
+import { capturePendingJoinCode } from "@/components/InviteQRCode";
 
 type Mode = "signin" | "signup";
 
@@ -52,6 +53,10 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    capturePendingJoinCode();
+  }, []);
 
   useEffect(() => {
     if (!loading && user) {

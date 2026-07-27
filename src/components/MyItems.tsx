@@ -11,11 +11,72 @@ import {
   ConfirmDialog,
   FormField,
 } from "./ui";
-import { uid, now, filesTo64 } from "@/lib/helpers";
-import type { State, Item } from "@/lib/types";
+import { uid, now, filesTo64, formatAvailability, hasAvailability } from "@/lib/helpers";
+import { DAYS_OF_WEEK, TIME_SLOTS } from "@/lib/types";
+import type { State, Item, Availability, DayOfWeek, TimeSlot } from "@/lib/types";
 
 const inputClass =
   "w-full px-3 py-2 bg-surface-sunken border-2 border-border rounded-2xl text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-accent";
+
+function AvailabilityPicker({
+  value,
+  onChange,
+}: {
+  value: Availability;
+  onChange: (next: Availability) => void;
+}) {
+  const toggle = (day: DayOfWeek, slot: TimeSlot) => {
+    const current = value[day] || [];
+    const next = current.includes(slot)
+      ? current.filter((s) => s !== slot)
+      : [...current, slot];
+    onChange({ ...value, [day]: next.length > 0 ? next : undefined });
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs border-separate border-spacing-1">
+        <thead>
+          <tr>
+            <th className="w-16" />
+            {DAYS_OF_WEEK.map((day) => (
+              <th key={day} className="text-ink-muted font-bold pb-1">
+                {day}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {TIME_SLOTS.map((slot) => (
+            <tr key={slot}>
+              <td className="text-ink-faint font-tag pr-2 whitespace-nowrap">{slot}</td>
+              {DAYS_OF_WEEK.map((day) => {
+                const active = (value[day] || []).includes(slot);
+                return (
+                  <td key={day}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(day, slot)}
+                      aria-pressed={active}
+                      aria-label={`${slot} on ${day}`}
+                      className={`w-9 h-8 rounded-lg border-2 transition-colors ${
+                        active
+                          ? "bg-teal border-border text-teal-ink"
+                          : "bg-surface-sunken border-border text-ink-faint hover:text-ink"
+                      }`}
+                    >
+                      {active ? "✓" : ""}
+                    </button>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 const STARTER_CATEGORIES = [
   "Power Tools",
@@ -60,7 +121,7 @@ export function MyItems({
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
   const [rv, setRv] = useState("");
-  const [avail, setAvail] = useState("");
+  const [availability, setAvailability] = useState<Availability>({});
   const [category, setCategory] = useState("");
   const [rateAmount, setRateAmount] = useState("");
   const [rateUnit, setRateUnit] = useState<"day" | "flat">("day");
@@ -75,7 +136,7 @@ export function MyItems({
     setTitle("");
     setNote("");
     setRv("");
-    setAvail("");
+    setAvailability({});
     setCategory("");
     setFiles([]);
     setRateAmount("");
@@ -89,7 +150,7 @@ export function MyItems({
     setTitle(item.title);
     setNote(item.note || "");
     setRv(item.rv ? String(item.rv) : "");
-    setAvail(item.avail || "");
+    setAvailability(item.availability || {});
     setCategory(item.category || "");
     setFiles([]);
     setRateAmount(item.rate ? String(item.rate.amount) : "");
@@ -124,7 +185,8 @@ export function MyItems({
           title: title.trim(),
           note: note.trim() || undefined,
           rv: rv ? Number(rv) : undefined,
-          avail: avail.trim() || undefined,
+          avail: undefined,
+          availability: hasAvailability(availability) ? availability : undefined,
           category: category.trim() || undefined,
           photos,
           rate,
@@ -142,7 +204,7 @@ export function MyItems({
           title: title.trim(),
           note: note.trim() || undefined,
           rv: rv ? Number(rv) : undefined,
-          avail: avail.trim() || undefined,
+          availability: hasAvailability(availability) ? availability : undefined,
           category: category.trim() || undefined,
           photos,
           rate,
@@ -243,6 +305,11 @@ export function MyItems({
                     {item.rate.unit === "day" ? "/day" : " flat"}
                   </div>
                 )}
+                {hasAvailability(item.availability) && (
+                  <div className="text-xs text-ink-faint">
+                    {formatAvailability(item.availability)}
+                  </div>
+                )}
               </div>
             </div>
             <Button kind="secondary" onClick={() => openEdit(item)}>
@@ -330,29 +397,25 @@ export function MyItems({
               className={`${inputClass} resize-none`}
             />
           </FormField>
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Replacement Value ($)" error={errors.rv}>
-              <input
-                type="number"
-                min="0"
-                value={rv}
-                onChange={(e) => {
-                  setRv(e.target.value);
-                  if (errors.rv) setErrors((prev) => ({ ...prev, rv: "" }));
-                }}
-                placeholder="0"
-                className={inputClass}
-              />
-            </FormField>
-            <FormField label="Availability">
-              <input
-                value={avail}
-                onChange={(e) => setAvail(e.target.value)}
-                placeholder="e.g., Weekends"
-                className={inputClass}
-              />
-            </FormField>
-          </div>
+          <FormField label="Replacement Value ($)" error={errors.rv}>
+            <input
+              type="number"
+              min="0"
+              value={rv}
+              onChange={(e) => {
+                setRv(e.target.value);
+                if (errors.rv) setErrors((prev) => ({ ...prev, rv: "" }));
+              }}
+              placeholder="0"
+              className={inputClass}
+            />
+          </FormField>
+          <FormField label="Availability (optional)">
+            <AvailabilityPicker value={availability} onChange={setAvailability} />
+            <p className="text-xs text-ink-faint mt-1">
+              Leave blank if it&apos;s available anytime. Tapping a cell toggles it.
+            </p>
+          </FormField>
           <FormField label="Rental Rate (optional)" error={errors.rateAmount}>
             <div className="flex gap-2">
               <input

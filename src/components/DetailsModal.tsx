@@ -2,7 +2,16 @@
 
 import React, { useState, useMemo } from "react";
 import { Button, Modal, Toast, FormField } from "./ui";
-import { uid, now, findOutstandingLoan, distanceLabel, rentalCost } from "@/lib/helpers";
+import {
+  uid,
+  now,
+  findOutstandingLoan,
+  distanceLabel,
+  rentalCost,
+  formatAvailability,
+  hasAvailability,
+  isOutsideAvailability,
+} from "@/lib/helpers";
 import type { State, Item, WaitlistEntry } from "@/lib/types";
 
 export function DetailsModal({
@@ -109,7 +118,13 @@ export function DetailsModal({
               <span className="text-sm text-ink-muted font-tag">${item.rv}</span>
             </div>
           )}
-          {item.avail && (
+          {hasAvailability(item.availability) && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-ink-faint uppercase tracking-wide">Availability</span>
+              <span className="text-sm text-ink-muted">{formatAvailability(item.availability)}</span>
+            </div>
+          )}
+          {!hasAvailability(item.availability) && item.avail && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-ink-faint uppercase tracking-wide">Availability</span>
               <span className="text-sm text-ink-muted">{item.avail}</span>
@@ -193,6 +208,16 @@ export function DetailsModal({
                   Estimated cost: ${rentalCost(item.rate, start, end).toFixed(2)}
                 </p>
               )}
+              {start &&
+                end &&
+                end >= start &&
+                isOutsideAvailability(item.availability, start, end) && (
+                  <p className="text-sm text-warn mt-2">
+                    ⚠ Heads up — this falls outside {owner?.name || "the owner"}&apos;s usual
+                    availability ({formatAvailability(item.availability)}). They can still say
+                    yes, but might not see it right away.
+                  </p>
+                )}
             </div>
             <Button onClick={handleRequest}>Request Tool</Button>
           </>

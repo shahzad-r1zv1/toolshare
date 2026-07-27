@@ -1,4 +1,15 @@
-import type { State, User, Friend, Circle, Item, Loan, RoughLocation } from "./types";
+import type {
+  State,
+  User,
+  Friend,
+  Circle,
+  Item,
+  Loan,
+  RoughLocation,
+  Availability,
+  DayOfWeek,
+} from "./types";
+import { DAYS_OF_WEEK } from "./types";
 
 export const uid = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
@@ -264,6 +275,67 @@ export const rentalCost = (
   const end = new Date(ey, em - 1, ed);
   const nights = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
   return rate.amount * nights;
+};
+
+const DAY_INDEX: Record<DayOfWeek, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+/** True if `availability` has at least one day with at least one slot checked. */
+export const hasAvailability = (availability: Availability | undefined): boolean =>
+  Boolean(availability && Object.values(availability).some((slots) => slots && slots.length > 0));
+
+/** Compact display string, e.g. "Sat/Sun: Morning, Afternoon" or "Mon-Fri: Evening". */
+export const formatAvailability = (availability: Availability | undefined): string => {
+  if (!hasAvailability(availability)) return "";
+  const groups = new Map<string, DayOfWeek[]>();
+  for (const day of DAYS_OF_WEEK) {
+    const slots = availability![day];
+    if (!slots || slots.length === 0) continue;
+    const key = slots.join(", ");
+    groups.set(key, [...(groups.get(key) || []), day]);
+  }
+  return [...groups.entries()].map(([slots, days]) => `${days.join("/")}: ${slots}`).join(" · ");
+};
+
+/**
+ * True if a date range includes at least one day the owner has NOT marked
+ * available (or the range spans more distinct weekdays than are ever
+ * available). Used only for a soft heads-up on requests — never blocks.
+ * Returns false when the owner hasn't set structured availability at all,
+ * since there's nothing to warn against.
+ */
+export const isOutsideAvailability = (
+  availability: Availability | undefined,
+  startDate: string,
+  endDate: string
+): boolean => {
+  if (!hasAvailability(availability)) return false;
+  const [sy, sm, sd] = startDate.split("-").map(Number);
+  const [ey, em, ed] = endDate.split("-").map(Number);
+  const start = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
+  if (end < start) return false;
+
+  const availableDays = new Set(
+    DAYS_OF_WEEK.filter((d) => (availability![d]?.length ?? 0) > 0).map((d) => DAY_INDEX[d])
+  );
+
+  const cursor = new Date(start);
+  let days = 0;
+  const MAX_DAYS_CHECKED = 30; // a week's pattern repeats; no need to walk months of a long loan
+  while (cursor <= end && days < MAX_DAYS_CHECKED) {
+    if (!availableDays.has(cursor.getDay())) return true;
+    cursor.setDate(cursor.getDate() + 1);
+    days++;
+  }
+  return false;
 };
 
 export const filesTo64 = async (arr: File[]): Promise<string[]> => {
