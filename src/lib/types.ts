@@ -104,6 +104,8 @@ export type Message = {
   senderId: string;
   text: string;
   createdAt: number;
+  /** User IDs who have opened the thread since this message was sent. The sender is added immediately. */
+  readBy?: string[];
 };
 
 export type WaitlistEntry = {

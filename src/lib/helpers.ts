@@ -8,6 +8,7 @@ import type {
   RoughLocation,
   Availability,
   DayOfWeek,
+  Message,
 } from "./types";
 import { DAYS_OF_WEEK } from "./types";
 
@@ -336,6 +337,39 @@ export const isOutsideAvailability = (
     days++;
   }
   return false;
+};
+
+/** True if `userId` has not yet opened the thread this message belongs to (and didn't send it themselves). */
+export const isMessageUnread = (message: Message, userId: string): boolean =>
+  message.senderId !== userId && !(message.readBy || []).includes(userId);
+
+/** How many messages in this thread `userId` hasn't seen yet. */
+export const unreadMessageCount = (
+  messages: Message[],
+  threadId: string,
+  userId: string
+): number =>
+  messages.filter((m) => m.threadId === threadId && isMessageUnread(m, userId)).length;
+
+/**
+ * Total unread messages across every thread `userId` is a party to — a
+ * request or loan where they're the borrower, or an item they own. Used to
+ * surface a badge outside the individual thread (e.g. on a tab), since
+ * unread counts on the Message button alone are invisible until that
+ * specific card is scrolled into view.
+ */
+export const totalUnreadMessages = (state: State, userId: string): number => {
+  const myItemIds = new Set(state.items.filter((i) => i.ownerId === userId).map((i) => i.id));
+  const myThreadIds = new Set<string>();
+  for (const r of state.requests) {
+    if (r.borrowerId === userId || myItemIds.has(r.itemId)) myThreadIds.add(r.id);
+  }
+  for (const l of state.loans) {
+    if (l.borrowerId === userId || myItemIds.has(l.itemId)) myThreadIds.add(l.id);
+  }
+  return state.messages.filter(
+    (m) => myThreadIds.has(m.threadId) && isMessageUnread(m, userId)
+  ).length;
 };
 
 export const filesTo64 = async (arr: File[]): Promise<string[]> => {

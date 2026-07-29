@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
-import { uid, now, DATE_FMT, findOverlappingLoan } from "@/lib/helpers";
+import { uid, now, DATE_FMT, findOverlappingLoan, totalUnreadMessages } from "@/lib/helpers";
 import { useAppState } from "@/lib/store";
 import type { Item, Request } from "@/lib/types";
 import { LoadingScreen, Toast, ThemeToggle } from "@/components/ui";
@@ -162,6 +162,8 @@ export default function Page() {
   const activeLoansCount = state.loans.filter(
     (l) => l.status === "ACTIVE"
   ).length;
+
+  const unreadMessageCount = totalUnreadMessages(state, state.user.id);
 
   const onOpenDetails = useCallback((item: Item) => setDetailsFor(item), []);
   const onCloseDetails = () => setDetailsFor(null);
@@ -410,24 +412,25 @@ export default function Page() {
 
           {/* Tab Navigation */}
           {searchScope === "circle" && (
-            <nav className="flex gap-2 mb-6 flex-wrap" role="tablist">
+            <nav className="flex gap-x-2 gap-y-3 mb-6 flex-wrap" role="tablist">
               {TAB_CONFIG.map(({ key, label, icon }) => {
                 const isActive = tab === key;
                 const badge =
                   key === "reqs" ? pendingRequestCount + activeLoansCount : 0;
+                const unread = key === "reqs" ? unreadMessageCount : 0;
                 return (
                   <button
                     key={key}
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setTab(key)}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-full border-2 border-border transition-all active:translate-y-[3px] active:shadow-none ${
+                    className={`relative flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-full border-2 border-border transition-all active:translate-y-[3px] active:shadow-none ${
                       isActive
                         ? "bg-accent text-accent-ink shadow-[0_3px_0_0_var(--border)]"
                         : "bg-surface text-ink-muted hover:text-ink shadow-[0_3px_0_0_var(--border)]"
                     }`}
                   >
-                    {icon}
+                    <span className="shrink-0 [&>svg]:w-4 [&>svg]:h-4 [&>svg]:block">{icon}</span>
                     <span className="hidden sm:inline">{label}</span>
                     {badge > 0 && (
                       <span
@@ -438,6 +441,15 @@ export default function Page() {
                         }`}
                       >
                         {badge}
+                      </span>
+                    )}
+                    {unread > 0 && (
+                      <span
+                        className="absolute top-0 right-0 translate-x-1/3 -translate-y-1/3 flex items-center justify-center min-w-[1rem] h-4 px-1 rounded-full bg-bad text-accent-ink text-[10px] font-tag leading-none border-2 border-bg z-10"
+                        title={`${unread} unread ${unread === 1 ? "message" : "messages"}`}
+                        aria-label={`${unread} unread ${unread === 1 ? "message" : "messages"}`}
+                      >
+                        {unread}
                       </span>
                     )}
                   </button>

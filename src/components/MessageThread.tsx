@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Modal, Avatar } from "./ui";
-import { uid, now } from "@/lib/helpers";
+import { uid, now, unreadMessageCount } from "@/lib/helpers";
 import type { State, Message } from "@/lib/types";
 
-/** Small button that opens a message thread modal, showing an unread-style count. */
+/** Small button that opens a message thread modal, badged with the unread count. */
 export function MessageButton({
   state,
   setState,
@@ -18,12 +18,19 @@ export function MessageButton({
   otherPartyName: string;
 }) {
   const [open, setOpen] = useState(false);
-  const count = state.messages.filter((m) => m.threadId === threadId).length;
+  const unread = unreadMessageCount(state.messages, threadId, state.user.id);
 
   return (
     <>
       <Button kind="secondary" onClick={() => setOpen(true)}>
-        Message{count > 0 ? ` (${count})` : ""}
+        <span className="inline-flex items-center gap-1.5">
+          Message
+          {unread > 0 && (
+            <span className="inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-bad text-accent-ink text-[10px] font-tag leading-none">
+              {unread}
+            </span>
+          )}
+        </span>
       </Button>
       {open && (
         <MessageThreadModal
@@ -60,6 +67,21 @@ function MessageThreadModal({
     .filter((m) => m.threadId === threadId)
     .sort((a, b) => a.createdAt - b.createdAt);
 
+  // Mark every message in this thread as read by the current user as soon
+  // as the thread is opened, so the unread badge clears wherever it shows.
+  useEffect(() => {
+    setState((s) => ({
+      ...s,
+      messages: s.messages.map((m) =>
+        m.threadId === threadId && !(m.readBy || []).includes(you)
+          ? { ...m, readBy: [...(m.readBy || []), you] }
+          : m
+      ),
+    }));
+    // Only needs to run once when the thread opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId]);
+
   const send = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -69,6 +91,7 @@ function MessageThreadModal({
       senderId: you,
       text: trimmed,
       createdAt: now(),
+      readBy: [you],
     };
     setState((s) => ({ ...s, messages: [...s.messages, message] }));
     setText("");
