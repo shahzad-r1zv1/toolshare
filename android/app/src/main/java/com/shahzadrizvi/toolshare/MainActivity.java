@@ -1,4 +1,4 @@
-package com.yourname.toolshare;
+package com.shahzadrizvi.toolshare;
 
 import com.getcapacitor.BridgeActivity;
 

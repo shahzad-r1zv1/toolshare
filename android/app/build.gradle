@@ -1,10 +1,16 @@
 apply plugin: 'com.android.application'
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
+
 android {
-    namespace "com.yourname.toolshare"
+    namespace "com.shahzadrizvi.toolshare"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.yourname.toolshare"
+        applicationId "com.shahzadrizvi.toolshare"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -16,6 +22,17 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            def storeFilePath = localProperties['RELEASE_STORE_FILE']
+            if (storeFilePath) {
+                storeFile file(storeFilePath)
+                storePassword localProperties['RELEASE_STORE_PASSWORD']
+                keyAlias localProperties['RELEASE_KEY_ALIAS']
+                keyPassword localProperties['RELEASE_KEY_PASSWORD']
+            }
+        }
+    }
     buildTypes {
         debug {
             debuggable true
@@ -23,6 +40,9 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (localProperties['RELEASE_STORE_FILE']) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
