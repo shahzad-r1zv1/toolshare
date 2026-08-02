@@ -144,9 +144,9 @@ export function Modal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative bg-surface-raised border-2 border-border rounded-3xl p-4 max-w-lg w-full animate-in shadow-[0_16px_36px_hsl(var(--shadow-color)/0.35)] overflow-hidden">
+      <div className="relative bg-surface-raised border-2 border-border rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col animate-in shadow-[0_16px_36px_hsl(var(--shadow-color)/0.35)] overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-[4px] kit-edge" />
-        <div className="flex items-center justify-between mb-3 pt-1">
+        <div className="flex items-center justify-between px-4 pt-[19px] pb-3 shrink-0">
           <h4 className="font-display font-bold text-lg tracking-tight text-ink">{title}</h4>
           <button
             onClick={onClose}
@@ -168,7 +168,7 @@ export function Modal({
             </svg>
           </button>
         </div>
-        <div className="grid gap-3">{children}</div>
+        <div className="grid gap-3 px-4 pb-4 overflow-y-auto">{children}</div>
       </div>
     </div>
   );

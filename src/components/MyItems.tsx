@@ -130,6 +130,7 @@ export function MyItems({
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showMore, setShowMore] = useState(false);
 
   const openNew = () => {
     setEditing(null);
@@ -142,6 +143,7 @@ export function MyItems({
     setRateAmount("");
     setRateUnit("day");
     setErrors({});
+    setShowMore(false);
     setOpen(true);
   };
 
@@ -156,6 +158,7 @@ export function MyItems({
     setRateAmount(item.rate ? String(item.rate.amount) : "");
     setRateUnit(item.rate?.unit || "day");
     setErrors({});
+    setShowMore(Boolean(item.note || item.rv != null || item.rate || hasAvailability(item.availability)));
     setOpen(true);
   };
 
@@ -388,61 +391,6 @@ export function MyItems({
               ))}
             </div>
           </FormField>
-          <FormField label="Notes">
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Condition, accessories, usage tips…"
-              rows={2}
-              className={`${inputClass} resize-none`}
-            />
-          </FormField>
-          <FormField label="Replacement Value ($)" error={errors.rv}>
-            <input
-              type="number"
-              min="0"
-              value={rv}
-              onChange={(e) => {
-                setRv(e.target.value);
-                if (errors.rv) setErrors((prev) => ({ ...prev, rv: "" }));
-              }}
-              placeholder="0"
-              className={inputClass}
-            />
-          </FormField>
-          <FormField label="Availability (optional)">
-            <AvailabilityPicker value={availability} onChange={setAvailability} />
-            <p className="text-xs text-ink-faint mt-1">
-              Leave blank if it&apos;s available anytime. Tapping a cell toggles it.
-            </p>
-          </FormField>
-          <FormField label="Rental Rate (optional)" error={errors.rateAmount}>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={rateAmount}
-                onChange={(e) => {
-                  setRateAmount(e.target.value);
-                  if (errors.rateAmount) setErrors((prev) => ({ ...prev, rateAmount: "" }));
-                }}
-                placeholder="0.00"
-                className={inputClass}
-              />
-              <select
-                value={rateUnit}
-                onChange={(e) => setRateUnit(e.target.value as "day" | "flat")}
-                className={inputClass}
-              >
-                <option value="day">per day</option>
-                <option value="flat">flat fee</option>
-              </select>
-            </div>
-            <p className="text-xs text-ink-faint mt-1">
-              Tracking only — settle up with the borrower yourselves; the app just shows the total.
-            </p>
-          </FormField>
           <FormField label="Photos (up to 3)">
             <input
               multiple
@@ -452,6 +400,87 @@ export function MyItems({
               className="text-sm text-ink-muted file:mr-3 file:rounded-full file:border-0 file:bg-surface-sunken file:px-3 file:py-2 file:text-sm file:text-ink file:font-bold hover:file:bg-surface-raised"
             />
           </FormField>
+
+          <button
+            type="button"
+            onClick={() => setShowMore((v) => !v)}
+            className="flex items-center gap-1.5 text-sm font-bold text-ink-muted hover:text-ink transition-colors w-fit"
+            aria-expanded={showMore}
+          >
+            <svg
+              className={`w-4 h-4 transition-transform ${showMore ? "rotate-90" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            {showMore ? "Fewer options" : "More options"}
+            <span className="text-xs text-ink-faint font-normal">
+              (notes, value, availability, rental rate)
+            </span>
+          </button>
+
+          {showMore && (
+            <>
+              <FormField label="Notes">
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Condition, accessories, usage tips…"
+                  rows={2}
+                  className={`${inputClass} resize-none`}
+                />
+              </FormField>
+              <FormField label="Replacement Value ($)" error={errors.rv}>
+                <input
+                  type="number"
+                  min="0"
+                  value={rv}
+                  onChange={(e) => {
+                    setRv(e.target.value);
+                    if (errors.rv) setErrors((prev) => ({ ...prev, rv: "" }));
+                  }}
+                  placeholder="0"
+                  className={inputClass}
+                />
+              </FormField>
+              <FormField label="Availability (optional)">
+                <AvailabilityPicker value={availability} onChange={setAvailability} />
+                <p className="text-xs text-ink-faint mt-1">
+                  Leave blank if it&apos;s available anytime. Tapping a cell toggles it.
+                </p>
+              </FormField>
+              <FormField label="Rental Rate (optional)" error={errors.rateAmount}>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={rateAmount}
+                    onChange={(e) => {
+                      setRateAmount(e.target.value);
+                      if (errors.rateAmount) setErrors((prev) => ({ ...prev, rateAmount: "" }));
+                    }}
+                    placeholder="0.00"
+                    className={inputClass}
+                  />
+                  <select
+                    value={rateUnit}
+                    onChange={(e) => setRateUnit(e.target.value as "day" | "flat")}
+                    className={inputClass}
+                  >
+                    <option value="day">per day</option>
+                    <option value="flat">flat fee</option>
+                  </select>
+                </div>
+                <p className="text-xs text-ink-faint mt-1">
+                  Tracking only — settle up with the borrower yourselves; the app just shows the total.
+                </p>
+              </FormField>
+            </>
+          )}
+
           <div className="flex gap-2 pt-1 flex-wrap">
             <Button onClick={saveItem} disabled={saving}>
               {saving ? "Saving…" : editing ? "Update" : "Save"}
