@@ -27,7 +27,7 @@ jobs:
           cache: npm
 
       - name: Install npm dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Build Next.js static export
         run: npm run build
