@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "772632316745",
+    "project_id": "toolshare-a1985",
+    "storage_bucket": "toolshare-a1985.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:772632316745:android:25dabe34c10e41c68da898",
+        "android_client_info": {
+          "package_name": "com.shahzadrizvi.toolshare"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "772632316745-kgkrec9rk2e18jdcs3kf4mi8j7e6lkok.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDr20XsvDlXSxZbFGeKxuqDJm_Uu_Vpv8U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "772632316745-kgkrec9rk2e18jdcs3kf4mi8j7e6lkok.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

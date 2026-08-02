@@ -12,6 +12,7 @@
     "export": "next export"
   },
   "dependencies": {
+    "@capacitor-firebase/authentication": "^7.5.0",
     "@capacitor/android": "^7.4.3",
     "@capacitor/core": "^7.4.3",
     "firebase": "^12.9.0",

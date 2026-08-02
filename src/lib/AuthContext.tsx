@@ -5,6 +5,8 @@ import {
   onAuthStateChanged,
   signInWithPopup,
   signInWithRedirect,
+  signInWithCredential,
+  GoogleAuthProvider,
   getRedirectResult,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -13,6 +15,8 @@ import {
   signOut as firebaseSignOut,
   User,
 } from "firebase/auth";
+import { Capacitor } from "@capacitor/core";
+import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import { auth, googleProvider, initError } from "./firebase";
 
 interface AuthContextValue {
@@ -131,6 +135,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(DEV_USER);
       return;
     }
+    if (Capacitor.isNativePlatform()) {
+      // Web-based popup/redirect flows break inside the Capacitor WebView
+      // (sessionStorage isn't shared with the popup/browser tab, causing
+      // "missing initial state" errors). Use native Google Sign-In instead
+      // and hand the resulting credential to the Firebase JS SDK so
+      // auth.currentUser / onAuthStateChanged stay in sync.
+      const result = await FirebaseAuthentication.signInWithGoogle();
+      const idToken = result.credential?.idToken;
+      if (!idToken) {
+        throw new Error("Google sign-in did not return a credential.");
+      }
+      const credential = GoogleAuthProvider.credential(idToken);
+      await signInWithCredential(auth, credential);
+      return;
+    }
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error: unknown) {
@@ -191,6 +210,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
+      if (Capacitor.isNativePlatform()) {
+        await FirebaseAuthentication.signOut();
+      }
       await firebaseSignOut(auth);
     } catch (error) {
       console.error("Sign-out failed:", error);

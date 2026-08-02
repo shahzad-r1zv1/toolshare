@@ -6,6 +6,12 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.withInputStream { localProperties.load(it) }
 }
 
+// Release signing values come from local.properties on a dev machine, or
+// from environment variables in CI (see .github/workflows/build-apk.yml).
+def releaseSigningProp = { String key ->
+    return localProperties[key] ?: System.getenv(key)
+}
+
 android {
     namespace "com.shahzadrizvi.toolshare"
     compileSdk rootProject.ext.compileSdkVersion
@@ -24,12 +30,12 @@ android {
     }
     signingConfigs {
         release {
-            def storeFilePath = localProperties['RELEASE_STORE_FILE']
+            def storeFilePath = releaseSigningProp('RELEASE_STORE_FILE')
             if (storeFilePath) {
                 storeFile file(storeFilePath)
-                storePassword localProperties['RELEASE_STORE_PASSWORD']
-                keyAlias localProperties['RELEASE_KEY_ALIAS']
-                keyPassword localProperties['RELEASE_KEY_PASSWORD']
+                storePassword releaseSigningProp('RELEASE_STORE_PASSWORD')
+                keyAlias releaseSigningProp('RELEASE_KEY_ALIAS')
+                keyPassword releaseSigningProp('RELEASE_KEY_PASSWORD')
             }
         }
     }
@@ -40,7 +46,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            if (localProperties['RELEASE_STORE_FILE']) {
+            if (releaseSigningProp('RELEASE_STORE_FILE')) {
                 signingConfig signingConfigs.release
             }
         }

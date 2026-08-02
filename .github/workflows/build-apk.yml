@@ -13,6 +13,8 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      HAS_RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
 
     steps:
       - name: Checkout repository
@@ -52,11 +54,34 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x android/gradlew
 
-      - name: Build debug APK
+      - name: Decode release keystore
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
+        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.jks
+
+      - name: Build release APK
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
+        working-directory: android
+        run: ./gradlew assembleRelease
+        env:
+          RELEASE_STORE_FILE: release.jks
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+
+      - name: Build debug APK (fallback — no release keystore configured)
+        if: env.HAS_RELEASE_KEYSTORE == 'false'
         working-directory: android
         run: ./gradlew assembleDebug
 
-      - name: Upload APK artifact
+      - name: Upload release APK
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolshare-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload debug APK
+        if: env.HAS_RELEASE_KEYSTORE == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: toolshare-debug-apk
