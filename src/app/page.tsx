@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { uid, now, DATE_FMT, findOverlappingLoan, totalUnreadMessages } from "@/lib/helpers";
 import { useAppState } from "@/lib/store";
 import type { Item, Request } from "@/lib/types";
-import { LoadingScreen, Toast, ThemeToggle } from "@/components/ui";
+import { LoadingScreen, Toast } from "@/components/ui";
 import { MyCircle } from "@/components/MyCircle";
 import { MyItems } from "@/components/MyItems";
 import { Requests } from "@/components/Requests";
@@ -17,6 +17,7 @@ import { DetailsModal } from "@/components/DetailsModal";
 import { CircleForms, CircleManagerModal, InviteModal } from "@/components/CircleManager";
 import { NetworkSearchResults } from "@/components/NetworkSearchResults";
 import { capturePendingJoinCode, takePendingJoinCode } from "@/components/InviteQRCode";
+import { SettingsModal, getStoredDefaultScope } from "@/components/Settings";
 
 type Tab = "circle" | "items" | "reqs" | "wishlist" | "consumables" | "history";
 
@@ -78,7 +79,7 @@ const TAB_CONFIG: { key: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function Page() {
-  const { user, loading, error: authError, signOut } = useAuth();
+  const { user, loading, error: authError } = useAuth();
   const router = useRouter();
   const { state, setState, ready, mode, syncError, createCircle, joinCircle, leaveCircle } =
     useAppState(user);
@@ -97,10 +98,11 @@ export default function Page() {
   const [activeCircleId, setActiveCircleId] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
-  const [searchScope, setSearchScope] = useState<"circle" | "network">("circle");
+  const [searchScope, setSearchScope] = useState<"circle" | "network">(getStoredDefaultScope());
   const [detailsFor, setDetailsFor] = useState<Item | null>(null);
   const [circlesOpen, setCirclesOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [offlineBannerDismissed, setOfflineBannerDismissed] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
@@ -279,13 +281,16 @@ export default function Page() {
             <span className="text-sm text-ink-muted hidden sm:inline">
               {user.displayName || user.email}
             </span>
-            <ThemeToggle />
             <button
-              onClick={signOut}
-              className="px-3 py-1.5 text-sm font-bold bg-surface-sunken hover:bg-surface-raised border-2 border-border text-ink rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
-              aria-label="Sign out"
+              onClick={() => setSettingsOpen(true)}
+              className="w-9 h-9 flex items-center justify-center bg-surface-sunken hover:bg-surface-raised border-2 border-border text-ink rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
+              aria-label="Settings"
+              title="Settings"
             >
-              Sign Out
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
             </button>
           </div>
         </div>
@@ -341,8 +346,8 @@ export default function Page() {
       ) : (
         <main className="p-4 max-w-5xl mx-auto">
           {/* Search & Filter */}
-          <div className="flex gap-2 mb-4">
-            <div className="relative flex-1">
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+            <div className="relative flex-1 min-w-0">
               <svg
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-faint"
                 fill="none"
@@ -375,38 +380,40 @@ export default function Page() {
                 </button>
               )}
             </div>
-            {searchScope === "circle" && (
-              <select
-                aria-label="Filter by category"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="px-3 py-2 bg-surface border-2 border-border rounded-2xl text-sm text-ink focus:outline-none focus:border-accent"
-              >
-                <option value="">All Categories</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            )}
-            <div className="flex bg-surface-sunken border-2 border-border rounded-full p-1 text-xs font-bold shrink-0">
-              <button
-                onClick={() => setSearchScope("circle")}
-                className={`px-3 py-1 rounded-full transition-colors ${
-                  searchScope === "circle" ? "bg-accent text-accent-ink" : "text-ink-muted"
-                }`}
-              >
-                This circle
-              </button>
-              <button
-                onClick={() => setSearchScope("network")}
-                className={`px-3 py-1 rounded-full transition-colors ${
-                  searchScope === "network" ? "bg-accent text-accent-ink" : "text-ink-muted"
-                }`}
-              >
-                All circles
-              </button>
+            <div className="flex gap-2 min-w-0">
+              {searchScope === "circle" && (
+                <select
+                  aria-label="Filter by category"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  className="min-w-0 flex-1 sm:flex-none px-3 py-2 bg-surface border-2 border-border rounded-2xl text-sm text-ink focus:outline-none focus:border-accent"
+                >
+                  <option value="">All Categories</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <div className="flex bg-surface-sunken border-2 border-border rounded-full p-1 text-xs font-bold shrink-0">
+                <button
+                  onClick={() => setSearchScope("circle")}
+                  className={`px-3 py-1 rounded-full transition-colors ${
+                    searchScope === "circle" ? "bg-accent text-accent-ink" : "text-ink-muted"
+                  }`}
+                >
+                  This circle
+                </button>
+                <button
+                  onClick={() => setSearchScope("network")}
+                  className={`px-3 py-1 rounded-full transition-colors ${
+                    searchScope === "network" ? "bg-accent text-accent-ink" : "text-ink-muted"
+                  }`}
+                >
+                  All circles
+                </button>
+              </div>
             </div>
           </div>
 
@@ -509,6 +516,15 @@ export default function Page() {
           </div>
           )}
         </main>
+      )}
+
+      {/* Settings modal */}
+      {settingsOpen && (
+        <SettingsModal
+          onClose={() => setSettingsOpen(false)}
+          onManageCircles={() => setCirclesOpen(true)}
+          onDone={(message) => setToast({ message, type: "success" })}
+        />
       )}
 
       {/* Circle management modal */}

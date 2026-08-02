@@ -29,6 +29,7 @@ interface AuthContextValue {
   signUpWithEmail: (name: string, email: string, password: string) => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updateDisplayName: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -41,6 +42,7 @@ const AuthContext = createContext<AuthContextValue>({
   signUpWithEmail: async () => {},
   signInWithEmail: async () => {},
   resetPassword: async () => {},
+  updateDisplayName: async () => {},
   signOut: async () => {},
 });
 
@@ -204,6 +206,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateDisplayName = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (!auth || !auth.currentUser) {
+      setUser({ ...DEV_USER, displayName: trimmed });
+      return;
+    }
+    try {
+      await updateProfile(auth.currentUser, { displayName: trimmed });
+      setUser({ ...auth.currentUser, displayName: trimmed } as User);
+    } catch (error: unknown) {
+      throw new Error(friendlyAuthError(error));
+    }
+  };
+
   const signOut = async () => {
     if (!auth) {
       setUser(DEV_USER);
@@ -230,6 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUpWithEmail,
         signInWithEmail,
         resetPassword,
+        updateDisplayName,
         signOut,
       }}
     >
