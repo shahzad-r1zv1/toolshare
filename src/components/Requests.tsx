@@ -369,28 +369,30 @@ export function Requests({
               const borrower = findUser(r.borrowerId);
               return (
                 <Card key={r.id}>
-                  <div className="flex items-center gap-3">
-                    <ItemPhoto src={item?.photos[0]} alt={item?.title || ""} />
-                    <div className="flex-1 min-w-0">
-                      <div className="truncate">
-                        {r.renewLoanId ? (
-                          <>
-                            <b>{borrower?.name}</b> wants to extend{" "}
-                            <b>{item?.title}</b>
-                          </>
-                        ) : (
-                          <>
-                            <b>{borrower?.name}</b> wants <b>{item?.title}</b>
-                          </>
-                        )}
-                      </div>
-                      <div className="text-xs text-ink-muted">
-                        {r.renewLoanId
-                          ? `New due date: ${DATE_FMT(r.endDate)}`
-                          : `${DATE_FMT(r.startDate)} → ${DATE_FMT(r.endDate)}`}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <ItemPhoto src={item?.photos[0]} alt={item?.title || ""} />
+                      <div className="min-w-0">
+                        <div className="truncate">
+                          {r.renewLoanId ? (
+                            <>
+                              <b>{borrower?.name}</b> wants to extend{" "}
+                              <b>{item?.title}</b>
+                            </>
+                          ) : (
+                            <>
+                              <b>{borrower?.name}</b> wants <b>{item?.title}</b>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-xs text-ink-muted">
+                          {r.renewLoanId
+                            ? `New due date: ${DATE_FMT(r.endDate)}`
+                            : `${DATE_FMT(r.startDate)} → ${DATE_FMT(r.endDate)}`}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex gap-2 flex-wrap sm:shrink-0">
                       <MessageButton
                         state={state}
                         setState={setState}
@@ -419,21 +421,23 @@ export function Requests({
               const owner = findUser(item?.ownerId || "");
               return (
                 <Card key={r.id}>
-                  <div className="flex items-center gap-3">
-                    <ItemPhoto src={item?.photos[0]} alt={item?.title || ""} />
-                    <div className="flex-1 min-w-0">
-                      <div className="truncate">
-                        Waiting on <b>{owner?.name}</b> to{" "}
-                        {r.renewLoanId ? "approve extending" : "approve"}{" "}
-                        <b>{item?.title}</b>
-                      </div>
-                      <div className="text-xs text-ink-muted">
-                        {r.renewLoanId
-                          ? `New due date: ${DATE_FMT(r.endDate)}`
-                          : `${DATE_FMT(r.startDate)} → ${DATE_FMT(r.endDate)}`}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <ItemPhoto src={item?.photos[0]} alt={item?.title || ""} />
+                      <div className="min-w-0">
+                        <div className="truncate">
+                          Waiting on <b>{owner?.name}</b> to{" "}
+                          {r.renewLoanId ? "approve extending" : "approve"}{" "}
+                          <b>{item?.title}</b>
+                        </div>
+                        <div className="text-xs text-ink-muted">
+                          {r.renewLoanId
+                            ? `New due date: ${DATE_FMT(r.endDate)}`
+                            : `${DATE_FMT(r.startDate)} → ${DATE_FMT(r.endDate)}`}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
                       <MessageButton
                         state={state}
                         setState={setState}
@@ -486,29 +490,31 @@ export function Requests({
               return (
                 <Card key={l.id}>
                   <div
-                    className={`flex items-center gap-3 ${
+                    className={`flex flex-col sm:flex-row sm:items-center gap-3 ${
                       status === "overdue" ? "-m-4 p-4 rounded-3xl bg-bad-soft" : ""
                     }`}
                   >
-                    <ItemPhoto src={item?.photos[0]} alt={title} />
-                    <div className="flex-1 min-w-0">
-                      <div className="truncate text-ink">
-                        <b>{title}</b> borrowed by{" "}
-                        <b>{borrower?.name}</b>
-                      </div>
-                      <div className={`text-xs ${dueLabelClass}`}>
-                        {status === "overdue" && "🔥 "}
-                        Due {DATE_FMT(l.endDate)}
-                        {dueSuffix}
-                        {l.renewalRequestId && " • Extension pending"}
-                      </div>
-                      {l.cost != null && (
-                        <div className="text-xs text-teal font-tag">
-                          ${l.cost.toFixed(2)} {l.paid ? "· paid" : "· unpaid"}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <ItemPhoto src={item?.photos[0]} alt={title} />
+                      <div className="min-w-0">
+                        <div className="truncate text-ink">
+                          <b>{title}</b> borrowed by{" "}
+                          <b>{borrower?.name}</b>
                         </div>
-                      )}
+                        <div className={`text-xs ${dueLabelClass}`}>
+                          {status === "overdue" && "🔥 "}
+                          Due {DATE_FMT(l.endDate)}
+                          {dueSuffix}
+                          {l.renewalRequestId && " • Extension pending"}
+                        </div>
+                        {l.cost != null && (
+                          <div className="text-xs text-teal font-tag">
+                            ${l.cost.toFixed(2)} {l.paid ? "· paid" : "· unpaid"}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex gap-2 flex-wrap sm:shrink-0">
                       <MessageButton
                         state={state}
                         setState={setState}

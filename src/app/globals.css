@@ -167,6 +167,10 @@ body {
   color: var(--ink);
   font-family: var(--font-stack-body);
   font-feature-settings: "tnum" 1;
+  /* Android renders edge-to-edge under the status/nav bars by default
+     (targetSdk 35); inset so content isn't drawn underneath them. */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Rounded, confident display type for headings and labels — the "community
