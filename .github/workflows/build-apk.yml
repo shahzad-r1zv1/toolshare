@@ -68,6 +68,16 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
+      - name: Build release bundle (.aab, for Play Store upload)
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
+        working-directory: android
+        run: ./gradlew bundleRelease
+        env:
+          RELEASE_STORE_FILE: release.jks
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+
       - name: Build debug APK (fallback — no release keystore configured)
         if: env.HAS_RELEASE_KEYSTORE == 'false'
         working-directory: android
@@ -79,6 +89,13 @@ jobs:
         with:
           name: toolshare-release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload release bundle
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolshare-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload debug APK
         if: env.HAS_RELEASE_KEYSTORE == 'false'
