@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Button, Card, Modal, EmptyState, Avatar, FormField, Toast } from "./ui";
 import { uid, now } from "@/lib/helpers";
+import { matchesQuery, useSemanticRanking } from "@/lib/search";
 import type { State, WishlistEntry } from "@/lib/types";
 
 export function Wishlist({
@@ -20,9 +21,15 @@ export function Wishlist({
   const findUser = (id: string) =>
     [state.user, ...state.friends].find((u) => u.id === id);
 
-  const entries = state.wishlist
-    .filter((w) => w.circleId === activeCircleId)
-    .filter((w) => w.title.toLowerCase().includes(search.toLowerCase()));
+  const circleEntries = useMemo(
+    () => state.wishlist.filter((w) => w.circleId === activeCircleId),
+    [state.wishlist, activeCircleId]
+  );
+  const substringMatches = useMemo(
+    () => circleEntries.filter((w) => matchesQuery(w, search)),
+    [circleEntries, search]
+  );
+  const entries = useSemanticRanking(search, circleEntries, substringMatches);
 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");

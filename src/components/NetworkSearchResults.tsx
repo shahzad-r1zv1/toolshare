@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Card, Button, Avatar, EmptyState, ItemPhoto } from "./ui";
 import { distanceLabel, findOutstandingLoan } from "@/lib/helpers";
+import { matchesQuery, useSemanticRanking } from "@/lib/search";
 import type { State, Item } from "@/lib/types";
 
 /**
@@ -24,9 +25,15 @@ export function NetworkSearchResults({
   const findCircleName = (circleId: string) =>
     state.circles.find((c) => c.id === circleId)?.name || "Unknown circle";
 
-  const results = state.items
-    .filter((i) => !i.archived)
-    .filter((i) => i.title.toLowerCase().includes(search.toLowerCase()));
+  const activeItems = useMemo(
+    () => state.items.filter((i) => !i.archived),
+    [state.items]
+  );
+  const substringMatches = useMemo(
+    () => activeItems.filter((i) => matchesQuery(i, search)),
+    [activeItems, search]
+  );
+  const results = useSemanticRanking(search, activeItems, substringMatches);
 
   if (!search) {
     return (

@@ -1,184 +1,33 @@
 # ToolShare
 
-Make it effortless for small, trusted circles (family, friends, neighbors) to lend/borrow DIY tools—reducing waste, saving money, and avoiding "hey do you still have my drill?" drama.
+Make it effortless for small, trusted circles (family, friends, neighbors) to lend/borrow DIY tools — reducing waste, saving money, and avoiding "hey do you still have my drill?" drama.
 
-Built with **Next.js** (static export) + **Capacitor** for Android.
+Built with **Next.js** (static export) + **Capacitor** for Android, backed by **Firebase** (Auth + Firestore).
 
----
-
-## 🚀 Getting Started for Beta Testing
-
-**New to ToolShare?** Start here:
-
-### 📖 [Quick Start Guide](./docs/QUICK_START.md) ← 30 minutes to live app!
-
-**Or follow these detailed guides:**
-
-1. **[Firebase Setup Guide](./docs/FIREBASE_SETUP.md)** - Enable Google Sign-On authentication (FREE)
-2. **[Deployment Guide](./docs/DEPLOYMENT.md)** - Host your app for free ($0/month options)
-3. **[Beta Testing Guide](./docs/BETA_TESTING.md)** - Distribute to friends and collect feedback
-
-**TL;DR**: Google Sign-On is already implemented! Just set up Firebase (free), deploy to Firebase Hosting (free), and share the URL with your friends.
+For the *why* behind these choices — the data model, security boundary, and principles that should stay stable across features — see **[CONSTITUTION.md](./CONSTITUTION.md)**. This README covers day-to-day dev workflow.
 
 ---
 
-## Prerequisites
-
-- **Node.js** 20+
-- **npm** (comes with Node.js)
-- **Android Studio** (for emulator testing and local builds)
-
-## Quick Start (Web Development)
+## Quick Start
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000). With no Firebase config, the app runs in **offline demo mode** — a local single-user sandbox with sample data (data stays in the browser). This is the fastest way to poke at the app; no setup required.
 
-## Building the Android APK
+To run against real accounts and shared data between people, configure Firebase — see [docs/QUICK_START.md](./docs/QUICK_START.md) (~30 min, free tier) or [docs/FIREBASE_SETUP.md](./docs/FIREBASE_SETUP.md) for just the auth setup.
 
-### 1. Build the web app and sync to Android
+## What's Implemented
 
-```bash
-npm install
-npm run build
-npx cap sync android
-```
-
-### 2. Build the APK
-
-```bash
-cd android
-./gradlew assembleDebug
-```
-
-The APK will be at: `android/app/build/outputs/apk/debug/app-debug.apk`
-
-### 3. Install on a connected device
-
-```bash
-adb install android/app/build/outputs/apk/debug/app-debug.apk
-```
-
-## Installing the APK on Your Phone
-
-If you downloaded the APK from the GitHub Actions build artifact:
-
-1. **The download is a ZIP file**, not an APK directly. Extract/unzip it first to get `app-debug.apk`.
-2. Transfer `app-debug.apk` to your phone (via USB, email, Google Drive, etc.).
-3. On your phone, go to **Settings → Security** (or **Settings → Apps → Special access**) and enable **Install unknown apps** for the app you're using to open the APK (e.g., Files, Chrome).
-4. Tap the APK file to install it.
-5. If you see "App not installed" after a previous install, **uninstall the old version first** (the signing key changes between CI builds).
-
-## Testing with Android Studio Emulator
-
-### Step 1: Install Android Studio
-
-Download and install [Android Studio](https://developer.android.com/studio) if you haven't already.
-
-### Step 2: Open the Android Project
-
-1. Open Android Studio.
-2. Select **File → Open** (or **Open** from the welcome screen).
-3. Navigate to the `android/` folder inside this project and select it.
-4. Wait for Gradle sync to complete (this may take a few minutes the first time).
-
-### Step 3: Create an Android Virtual Device (AVD)
-
-1. In Android Studio, go to **Tools → Device Manager** (or click the phone icon in the toolbar).
-2. Click **Create Virtual Device**.
-3. Choose a device definition:
-   - **Recommended**: Pixel 7 or Pixel 8 (these closely match real devices).
-   - Click **Next**.
-4. Select a system image:
-   - Go to the **Recommended** tab.
-   - Download and select an **API 34** (Android 14) or **API 35** (Android 15) image.
-   - Prefer **x86_64** images for Intel/AMD machines, or **arm64-v8a** for Apple Silicon Macs.
-   - Click **Next**.
-5. Name your AVD (or keep the default), then click **Finish**.
-
-### Step 4: Prepare the Web Assets
-
-Before running the app, you must build the web content and sync it to the Android project:
-
-```bash
-# From the project root (not the android/ folder)
-npm install
-npm run build
-npx cap sync android
-```
-
-### Step 5: Run on the Emulator
-
-**Option A: From Android Studio**
-
-1. In the toolbar, select your emulator from the device dropdown (e.g., "Pixel 7 API 34").
-2. Click the green **Run ▶** button (or press `Shift+F10`).
-3. Wait for the emulator to boot and the app to install and launch.
-
-**Option B: From the command line**
-
-```bash
-# Start the emulator (replace AVD_NAME with your AVD name)
-emulator -avd AVD_NAME &
-
-# Build and install
-cd android
-./gradlew installDebug
-```
-
-To list your available AVDs: `emulator -list-avds`
-
-### Step 6: Live Reload During Development (Optional)
-
-For faster iteration, you can use Capacitor's live reload:
-
-```bash
-# Find your computer's local IP address
-# macOS: ipconfig getifaddr en0
-# Windows: ipconfig
-# Linux: hostname -I
-
-# Start the dev server bound to your IP
-npm run dev -- --host 0.0.0.0
-
-# Then update capacitor.config.ts temporarily:
-# server: { url: 'http://YOUR_IP:3000', cleartext: true }
-
-# Sync and run
-npx cap sync android
-# Then run from Android Studio
-```
-
-> **Note:** Remember to remove the `server` config before building a production APK.
-
-### Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| "App not installed" | Uninstall any previous version of the app first, then try again. |
-| Blank white screen | Run `npm run build && npx cap sync android` to ensure web assets are bundled. |
-| Emulator won't start | Ensure hardware acceleration (HAXM/Hypervisor) is enabled in BIOS. |
-| Gradle sync fails | Click **File → Invalidate Caches / Restart** in Android Studio. |
-| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | Uninstall the existing app: `adb uninstall com.yourname.toolshare` |
-| Build fails locally | Ensure you've run `npm run build && npx cap sync android` first. |
-
-## Project Structure
-
-```
-toolshare/
-├── src/                    # Next.js app source
-│   ├── app/                # App router pages
-│   ├── components/         # React components
-│   └── lib/                # Utilities, types, Firebase config
-├── android/                # Capacitor Android project
-│   └── app/                # Android app module
-├── capacitor.config.ts     # Capacitor configuration
-├── next.config.ts          # Next.js configuration
-└── package.json            # Dependencies and scripts
-```
+- Email/password accounts (create, sign in, password reset) and Google Sign-In
+- Real-time shared data via Firestore — circles, items, requests, and loans sync between all members of a circle
+- Invite codes (6-character) and QR-code invites to join a circle
+- Two-sided loan return confirmation, overlap-conflict checking on bookings, loan renewals
+- Wishlist ("looking for X") and consumables (paint, scrap wood — claimed and decremented, not borrowed/returned)
+- In-app messaging per request/loan thread
+- Offline demo mode when Firebase isn't configured
 
 ## Scripts
 
@@ -187,76 +36,68 @@ toolshare/
 | `npm run dev` | Start Next.js dev server |
 | `npm run build` | Build static export to `out/` |
 | `npm run lint` | Run ESLint |
-| `npm test` | Run Vitest tests |
-| `npx cap sync android` | Sync web assets to Android |
+| `npm test` | Run Vitest tests (`src/__tests__/`) |
+| `npx cap sync android` | Sync web assets into the Android project |
 
----
+## Project Structure
 
-## 🔐 Authentication & Deployment
+```
+toolshare-web/
+├── src/
+│   ├── app/                # Next.js App Router pages (/, /login, /privacy, /delete-account)
+│   ├── components/         # UI components
+│   ├── lib/                # store.ts (Firestore↔State sync), types.ts, AuthContext, firebase.ts
+│   └── __tests__/          # Vitest unit/integration tests
+├── android/                 # Capacitor Android project
+├── capacitor.config.ts
+├── firestore.rules
+├── CONSTITUTION.md          # Architecture, data model, and durable principles
+├── RELEASE.md               # Signed Android release build + Play Store process
+└── docs/                    # Step-by-step setup/deployment/beta-testing guides
+```
 
-### What's implemented
+## Building the Android App
 
-✅ **Email/password accounts** — create an account, sign in, password reset
-✅ **Google Sign-In** — popup with automatic redirect fallback on mobile
-✅ **Shared data via Firestore** — circles, items, requests, and loans sync in real time between all members of a circle
-✅ **Invite codes** — create a circle and friends join it with a 6-character code
-✅ **Offline demo mode** — with no Firebase config the app runs as a local single-user sandbox (data stays in the browser)
+```bash
+npm run build            # static export to out/
+npx cap sync android      # copy the web build into the Android project
+cd android
+./gradlew assembleDebug   # unsigned debug APK, for sideloading
+```
 
-**To go live:**
-1. Create a Firebase project (free) and enable Email/Password + Google auth and Firestore
-2. Add Firebase config to `.env.local`
-3. `npm run build && firebase deploy`
+Debug APK lands at `android/app/build/outputs/apk/debug/app-debug.apk`. For a **signed release build** (required for the Play Store), see **[RELEASE.md](./RELEASE.md)**.
 
-**Step-by-step instructions**: [docs/QUICK_START.md](./docs/QUICK_START.md)
+`.github/workflows/build-apk.yml` builds a debug APK on every push to `main` (and a signed release APK if signing secrets are configured) — useful for grabbing a build without a local Android toolchain.
 
-### Hosting Options (All Free)
+### Running on an emulator / device
 
-| Platform | Setup Time | Free Tier | Best For |
-|----------|-----------|-----------|----------|
-| **Firebase Hosting** | 5 min | 10 GB/month | Already using Firebase |
-| **Vercel** | 2 min | 100 GB/month | Easiest deployment |
-| **Netlify** | 3 min | 100 GB/month | Drag-and-drop |
-| **GitHub Pages** | 5 min | Unlimited* | Open source projects |
+1. Install [Android Studio](https://developer.android.com/studio) and create a virtual device (Tools → Device Manager), or connect a physical device with USB debugging enabled.
+2. `npm run build && npx cap sync android`
+3. Open `android/` in Android Studio and hit **Run**, or `cd android && ./gradlew installDebug`.
 
-**Estimated cost for beta testing**: **$0/month** for 10-100 users
+If you hit `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, uninstall the previously installed build first — the debug and release signing keys differ.
 
-**Detailed instructions**: [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
+## Deployment (Web)
 
-### Beta Testing Distribution
+```bash
+npm run build
+firebase deploy --only hosting
+```
 
-**Easiest approach**: Deploy the web app and share the URL
-- Works on iPhone, Android, desktop
-- No app store required
-- Instant updates
-- Zero cost
+See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for hosting alternatives (Vercel, Netlify, GitHub Pages) and cost estimates.
 
-**Android APK options**:
-- Firebase App Distribution (free, recommended)
-- Google Play Internal Testing ($25 one-time)
-- Direct APK sharing (free, manual)
+## Beta Testing & Publishing
 
-**Detailed instructions**: [docs/BETA_TESTING.md](./docs/BETA_TESTING.md)
+- **Web**: deploy and share the URL — works on any device, no app store needed.
+- **Android APK**: Firebase App Distribution, Google Play Internal Testing, or direct APK sharing. See [docs/BETA_TESTING.md](./docs/BETA_TESTING.md).
+- **Play Store submission**: see [RELEASE.md](./RELEASE.md) for the signed build process; the store listing, content rating, and data safety declarations are handled directly in Play Console.
 
----
+## Documentation
 
-## 📚 Documentation
-
-- **[Quick Start Guide](./docs/QUICK_START.md)** - Get from zero to deployed in 30 minutes
-- **[Firebase Setup Guide](./docs/FIREBASE_SETUP.md)** - Configure Google Sign-On authentication
-- **[Deployment Guide](./docs/DEPLOYMENT.md)** - Host your app with minimal cost
-- **[Beta Testing Guide](./docs/BETA_TESTING.md)** - Distribute to friends and gather feedback
-
----
-
-## 💰 Cost Estimate for Early Beta
-
-**Realistic costs for 10-50 beta testers:**
-
-| Service | Free Tier | Beta Cost |
-|---------|-----------|-----------|
-| Firebase Auth | 50K MAU | $0/month |
-| Firebase Hosting | 10 GB/month | $0/month |
-| Firebase App Distribution | 200 testers | $0/month |
-| **Total** | | **$0/month** |
-
-Scale to 1,000+ users before hitting any paid tiers!
+- **[CONSTITUTION.md](./CONSTITUTION.md)** — architecture, data model, security boundary, and product principles
+- **[docs/QUICK_START.md](./docs/QUICK_START.md)** — zero to deployed in ~30 minutes
+- **[docs/FIREBASE_SETUP.md](./docs/FIREBASE_SETUP.md)** — configure Google Sign-In and Firestore
+- **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** — hosting options
+- **[docs/BETA_TESTING.md](./docs/BETA_TESTING.md)** — distributing to testers
+- **[RELEASE.md](./RELEASE.md)** — signed Android release builds and Play Store publishing
+- **[CHANGELOG.md](./CHANGELOG.md)** — notable changes over time

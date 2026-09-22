@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Button, Card, Modal, EmptyState, ItemPhoto, Toast, Celebration } from "./ui";
 import { MessageButton } from "./MessageThread";
 import { uid, now, filesTo64, DATE_FMT, findOutstandingLoan, dueStatus, rentalCost } from "@/lib/helpers";
+import { matchesQuery, useSemanticRanking } from "@/lib/search";
 import type { State, Request, Loan, Message } from "@/lib/types";
 
 export function Requests({
@@ -25,13 +26,24 @@ export function Requests({
   const findUser = (id: string) =>
     [state.user, ...state.friends].find((u) => u.id === id);
 
+  const candidateItems = useMemo(
+    () => state.items.filter((i) => !i.archived),
+    [state.items]
+  );
+  const substringMatches = useMemo(
+    () => candidateItems.filter((i) => matchesQuery(i, search)),
+    [candidateItems, search]
+  );
+  const rankedMatches = useSemanticRanking(search, candidateItems, substringMatches);
+  const matchingItemIds = useMemo(
+    () => new Set(rankedMatches.map((i) => i.id)),
+    [rankedMatches]
+  );
+
   const matchesFilter = (r: { itemId: string }) => {
     const it = findItem(r.itemId);
     if (!it) return false;
-    return (
-      it.title.toLowerCase().includes(search.toLowerCase()) &&
-      (!filter || it.category === filter)
-    );
+    return matchingItemIds.has(it.id) && (!filter || it.category === filter);
   };
 
   const incoming = state.requests

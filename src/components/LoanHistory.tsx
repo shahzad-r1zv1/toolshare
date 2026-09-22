@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Button, Card, EmptyState, ItemPhoto, Modal, FormField, Toast } from "./ui";
 import { DATE_FMT, now, uid, filesTo64 } from "@/lib/helpers";
+import { matchesQuery, useSemanticRanking } from "@/lib/search";
 import type { State, Loan, Request } from "@/lib/types";
 
 export function LoanHistory({
@@ -21,17 +22,35 @@ export function LoanHistory({
   const findUser = (id: string) =>
     [state.user, ...state.friends].find((u) => u.id === id);
 
-  const history = state.loans
-    .filter((l) => l.status === "RETURNED")
-    .filter((l) => {
-      const it = findItem(l.itemId);
-      const title = it?.title ?? l.itemTitle;
-      const category = it?.category ?? l.itemCategory;
-      return (
-        title.toLowerCase().includes(search.toLowerCase()) &&
-        (!filter || category === filter)
-      );
-    });
+  const returnedLoans = useMemo(
+    () => state.loans.filter((l) => l.status === "RETURNED"),
+    [state.loans]
+  );
+  const searchableLoans = useMemo(
+    () =>
+      returnedLoans.map((l) => {
+        const it = findItem(l.itemId);
+        return {
+          id: l.id,
+          title: it?.title ?? l.itemTitle,
+          category: it?.category ?? l.itemCategory,
+        };
+      }),
+    // findItem reads from state.items, which is captured by returnedLoans' source state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [returnedLoans]
+  );
+  const substringMatches = useMemo(
+    () => searchableLoans.filter((l) => matchesQuery(l, search)),
+    [searchableLoans, search]
+  );
+  const rankedMatches = useSemanticRanking(search, searchableLoans, substringMatches);
+  const history = useMemo(() => {
+    const matchingIds = new Set(
+      rankedMatches.filter((l) => !filter || l.category === filter).map((l) => l.id)
+    );
+    return returnedLoans.filter((l) => matchingIds.has(l.id));
+  }, [rankedMatches, filter, returnedLoans]);
 
   const [disputing, setDisputing] = useState<Loan | null>(null);
   const [disputeReason, setDisputeReason] = useState("");

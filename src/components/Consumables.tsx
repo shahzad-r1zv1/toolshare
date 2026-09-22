@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Button, Card, Modal, EmptyState, Avatar, FormField, Toast, ItemPhoto } from "./ui";
 import { uid, now, filesTo64 } from "@/lib/helpers";
+import { matchesQuery, useSemanticRanking } from "@/lib/search";
 import type { State, Consumable, ConsumableClaim } from "@/lib/types";
 
 const inputClass =
@@ -23,9 +24,15 @@ export function Consumables({
   const findUser = (id: string) =>
     [state.user, ...state.friends].find((u) => u.id === id);
 
-  const items = state.consumables
-    .filter((c) => c.circleId === activeCircleId)
-    .filter((c) => c.title.toLowerCase().includes(search.toLowerCase()));
+  const circleConsumables = useMemo(
+    () => state.consumables.filter((c) => c.circleId === activeCircleId),
+    [state.consumables, activeCircleId]
+  );
+  const substringMatches = useMemo(
+    () => circleConsumables.filter((c) => matchesQuery(c, search)),
+    [circleConsumables, search]
+  );
+  const items = useSemanticRanking(search, circleConsumables, substringMatches);
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Consumable | null>(null);

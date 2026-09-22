@@ -143,7 +143,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // "missing initial state" errors). Use native Google Sign-In instead
       // and hand the resulting credential to the Firebase JS SDK so
       // auth.currentUser / onAuthStateChanged stay in sync.
-      const result = await FirebaseAuthentication.signInWithGoogle();
+      //
+      // useCredentialManager: false opts into the legacy GoogleSignInClient
+      // flow instead of Android's newer Credential Manager API. Some OEM
+      // builds (e.g. OnePlus/OxygenOS) don't expose a Credential Manager
+      // provider, which makes the Credential Manager path fail immediately
+      // with "no credentials found" and no account picker at all.
+      const result = await FirebaseAuthentication.signInWithGoogle({
+        useCredentialManager: false,
+      });
       const idToken = result.credential?.idToken;
       if (!idToken) {
         throw new Error("Google sign-in did not return a credential.");

@@ -3,6 +3,7 @@
 import React, { useMemo } from "react";
 import { Avatar, Card, Button, EmptyState, ItemPhoto } from "./ui";
 import { trustScore, distanceLabel, formatAvailability, hasAvailability } from "@/lib/helpers";
+import { matchesQuery, useSemanticRanking } from "@/lib/search";
 import type { State, Item } from "@/lib/types";
 
 export function MyCircle({
@@ -24,16 +25,22 @@ export function MyCircle({
     return [state.user, ...state.friends].filter((m) => ids.includes(m.id));
   }, [state, activeCircleId]);
 
+  const circleItems = useMemo(
+    () => state.items.filter((i) => i.circleId === activeCircleId && !i.archived),
+    [state.items, activeCircleId]
+  );
+  const substringMatches = useMemo(
+    () => circleItems.filter((i) => matchesQuery(i, search)),
+    [circleItems, search]
+  );
+  const rankedMatches = useSemanticRanking(search, circleItems, substringMatches);
+  const filteredMatches = useMemo(
+    () => rankedMatches.filter((i) => !filter || i.category === filter),
+    [rankedMatches, filter]
+  );
+
   const itemsByMember = (memberId: string) =>
-    state.items
-      .filter(
-        (i) =>
-          i.circleId === activeCircleId && i.ownerId === memberId && !i.archived
-      )
-      .filter((i) =>
-        i.title.toLowerCase().includes(search.toLowerCase())
-      )
-      .filter((i) => !filter || i.category === filter);
+    filteredMatches.filter((i) => i.ownerId === memberId);
 
   const totalItems = members.reduce(
     (sum, m) => sum + itemsByMember(m.id).length,

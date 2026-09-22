@@ -1,0 +1,10 @@
+name = "toolshare-search-rank"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# TYPESAFE_API_KEY is a secret, not a var — set it with:
+#   wrangler secret put TYPESAFE_API_KEY
+#
+# ALLOWED_ORIGIN restricts CORS to your deployed site. Set it with:
+#   wrangler secret put ALLOWED_ORIGIN
+# (or add it under [vars] below if you don't mind it being non-secret)
